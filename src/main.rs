@@ -1,5 +1,7 @@
 #![windows_subsystem = "windows"]
 extern crate vulkano;
+extern crate image;
+use image::DynamicImage;
 use vulkano::render_pass::RenderPass;
 use vulkano::shader::ShaderModule;
 use vulkano::buffer::{TypedBufferAccess}; //, CpuBufferPool};
@@ -38,6 +40,8 @@ use vulkano::render_pass::{
     FramebufferCreateInfo
 };
 use winit::dpi::{LogicalSize};
+use winit::event::{VirtualKeyCode, ElementState};
+use winit::monitor::{MonitorHandle};
 use crate::vulkano::sync::GpuFuture;
 
 
@@ -46,7 +50,7 @@ use bytemuck::{Pod, Zeroable};
 use winit::{
     event::{Event, WindowEvent},
     event_loop::{ControlFlow, EventLoop},
-    window::{Window, WindowBuilder},
+    window::{Window, WindowBuilder, Fullscreen},
 };
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, Zeroable, Pod)]
@@ -212,18 +216,26 @@ impl Game {
             .expect("Couldn't start Vulkan.")
     }
 
+    
 
     fn create_window(instance: &Arc<Instance>) -> (EventLoop<()>, Arc<Surface<Window>>){
+        let icon: DynamicImage = image::load_from_memory(include_bytes!("../handsomesquidward.bmp")).unwrap();
+        let icondimension = (icon.height(), icon.width());
+        let iconbytes: Vec<u8> = icon.into_rgba8().into_raw();
         let event_loop = EventLoop::new();
         let surface = WindowBuilder::new()
             .with_resizable(true)
             .with_title(TITLE)
             .with_min_inner_size(LogicalSize::new(WIDTH, HEIGHT))
             .with_inner_size(LogicalSize::new(600, 600))
+            .with_window_icon(Some(winit::window::Icon::from_rgba(iconbytes, icondimension.1, icondimension.0).unwrap()))
             .build_vk_surface(&event_loop, instance.clone())
             .unwrap();
+        //surface.window().set_fullscreen(Some(Fullscreen::Exclusive(MonitorHandle::video_modes(&surface.window().current_monitor().unwrap()).next().unwrap())));
+        //surface.window().set_cursor_grab(winit::window::CursorGrabMode::Confined).unwrap();
         (event_loop, surface)
     }
+    
     fn create_device_extensions() -> DeviceExtensions{
         DeviceExtensions {
             khr_swapchain: true,
@@ -364,8 +376,9 @@ impl Game {
             .collect::<Vec<_>>()
     }
     fn mainloop(mut self){
+        let mut pressed = false;
         self.event_loop.run(move |event, _, control_flow| {
-            control_flow.set_wait();
+            control_flow.set_poll();
             match event {
                 Event::WindowEvent {
                     event: WindowEvent::CloseRequested,
@@ -378,6 +391,34 @@ impl Game {
                     ..
                 } => {
                     self.recreate_swapchain = true;
+                }
+                Event::WindowEvent {
+                    event: WindowEvent::KeyboardInput {input, ..},
+                    .. 
+                } => {
+                    if let Some(key_code) = input.virtual_keycode {
+                        match key_code {
+                            VirtualKeyCode::F11 => {
+                                if input.state == ElementState::Pressed{
+                                    if !pressed{
+                                        pressed = true;
+                                        if self.surface.window().fullscreen() == None{
+                                            self.surface.window().set_fullscreen(Some(Fullscreen::Borderless(self.surface.window().current_monitor()))); //borderless
+                                            //self.surface.window().set_fullscreen(Some(Fullscreen::Exclusive(MonitorHandle::video_modes(&self.surface.window().current_monitor().unwrap()).next().unwrap()))); //exclusive
+                                        }
+                                        else {
+                                            self.surface.window().set_fullscreen(None)
+                                        }
+                                    } 
+                                }
+                                else {
+                                    pressed = false;
+                                }
+                            }
+
+                            _ => ()
+                        }
+                    }
                 }
                 Event::RedrawEventsCleared => {
                     let dimensions = self.surface.window().inner_size();
