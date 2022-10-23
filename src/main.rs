@@ -1,7 +1,8 @@
+#![windows_subsystem = "windows"]
 extern crate vulkano;
 use vulkano::render_pass::RenderPass;
 use vulkano::shader::ShaderModule;
-use vulkano::buffer::TypedBufferAccess;
+use vulkano::buffer::{TypedBufferAccess}; //, CpuBufferPool};
 use vulkano::device::{Device, Queue};
 use vulkano::device::physical::PhysicalDevice;
 use vulkano::image::{SwapchainImage, ImageUsage, view::ImageView, ImageAccess};
@@ -69,8 +70,9 @@ mod fs {
 }
 
 
-const WIDTH: u16 = 800;
-const HEIGHT: u16 = 800;
+const WIDTH: u16 = 200;
+const HEIGHT: u16 = 200;
+const TITLE: &str = "Let Triangle - Vulkan";
 #[allow(unused)]
 struct Game{
     instance: Arc<Instance>,
@@ -103,7 +105,6 @@ impl Game {
         let (device, queue) = Self::create_device_and_queues(&physical_device, &device_extensions, queue_family_index);
         let (swapchain, images) = Self::create_swapchain_and_images(&device, &surface);
 
-
         let vs = vs::load(device.clone()).unwrap();
         let fs = fs::load(device.clone()).unwrap();
 
@@ -115,13 +116,28 @@ impl Game {
 
         let vertices = [
             Vertex {
-                position: [-0.5, -0.5],
+                position: [-1.0, -1.0],
+            },
+            Vertex {
+                position: [-1.0, 1.0],
+            },
+            Vertex {
+                position: [1.0, -1.0],
+            },
+            Vertex {
+                position: [-1.0, 1.0],
+            },
+            Vertex {
+                position: [1.0, 1.0],
+            },
+            Vertex {
+                position: [1.0, -1.0],
+            },
+            Vertex {
+                position: [0.0, -0.5],
             },
             Vertex {
                 position: [-0.5, 0.5],
-            },
-            Vertex {
-                position: [0.5, -0.5],
             },
             Vertex {
                 position: [0.5, 0.5],
@@ -176,7 +192,13 @@ impl Game {
 
 
     fn create_instance() -> Arc<Instance> {
-        let library = VulkanLibrary::new().unwrap();
+        let library: Arc<VulkanLibrary> = match VulkanLibrary::new() {
+            Err(_) => {
+                println!("This PC does not support Vulkan.\nProgram can not be started.");
+                std::process::exit(0);
+            },
+            Ok(a) => a,
+        };
         let required_extensions = vulkano_win::required_extensions(&library);
         let gameinfo = InstanceCreateInfo{
             application_name: Some("Let Vulkan Test".into()),
@@ -195,8 +217,9 @@ impl Game {
         let event_loop = EventLoop::new();
         let surface = WindowBuilder::new()
             .with_resizable(true)
-            .with_title("Let Test - Vulkan")
+            .with_title(TITLE)
             .with_min_inner_size(LogicalSize::new(WIDTH, HEIGHT))
+            .with_inner_size(LogicalSize::new(600, 600))
             .build_vk_surface(&event_loop, instance.clone())
             .unwrap();
         (event_loop, surface)
@@ -342,6 +365,7 @@ impl Game {
     }
     fn mainloop(mut self){
         self.event_loop.run(move |event, _, control_flow| {
+            control_flow.set_wait();
             match event {
                 Event::WindowEvent {
                     event: WindowEvent::CloseRequested,
@@ -398,11 +422,10 @@ impl Game {
                         CommandBufferUsage::OneTimeSubmit,
                     )
                     .unwrap();
-    
                     builder
                         .begin_render_pass(
                              RenderPassBeginInfo {
-                                clear_values: vec![Some([0.0, 0.0, 0.0, 0.0].into())],
+                                clear_values: vec![Some([0.0, 0.0, 0.0, 1.0].into())],
                                 ..RenderPassBeginInfo::framebuffer(self.framebuffers[image_num].clone())
                              },
                              SubpassContents::Inline,
@@ -444,6 +467,7 @@ impl Game {
                             self.previous_frame_end = Some(sync::now(self.device.clone()).boxed());
                         }
                     }
+                    
                 }
                 _ => (),
             }
