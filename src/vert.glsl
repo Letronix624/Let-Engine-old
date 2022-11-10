@@ -21,9 +21,12 @@ vec4 colors[] = vec4[](
     lavender, // bottom right
     skyblue, // top right
     // triangle
-    vec4(0.0, 0.0, 0.0, 1.0),
-    vec4(0.0, 0.0, 0.0, 1.0),
-    vec4(0.0, 0.0, 0.0, 1.0)
+    orange,
+    orange,
+    orange,
+    orange,
+    orange,
+    orange
 );
 void main() {
     gl_Position = vec4(position, 0.0, 1.0);
