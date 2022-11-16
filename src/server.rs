@@ -107,6 +107,7 @@ impl Server {
                                 let obj = Object {
                                     position: [f32::from_be_bytes(buf[1..5].try_into().unwrap()), f32::from_be_bytes(buf[5..9].try_into().unwrap())],
                                     size: [f32::from_be_bytes(buf[9..13].try_into().unwrap()), f32::from_be_bytes(buf[13..17].try_into().unwrap())],
+                                    rotation: 0.0,
                                     data: super::SQUARE.to_vec(),
                                 };
                                 {

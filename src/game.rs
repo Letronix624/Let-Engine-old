@@ -1,6 +1,8 @@
 mod client;
 
-use std::{collections::HashMap, ops::Index};
+use std::{collections::HashMap};
+
+use crate::data::{TRIANGLE, self};
 
 use super::{delta_time, fps, BACKGROUND, SQUARE};
 
@@ -8,29 +10,37 @@ use client::{get_ping, Client};
 
 #[derive(Clone, Copy)]
 pub struct InputState {
-    pub up: bool,
-    pub down: bool,
-    pub left: bool,
-    pub right: bool,
-    pub smaller: bool,
-    pub bigger: bool,
+    pub w: bool,
+    pub s: bool,
+    pub a: bool,
+    pub d: bool,
+    pub q: bool,
+    pub e: bool,
+    pub r: bool,
     pub mouse: (f32, f32),
+    pub lmb: bool,
+    pub mmb: bool,
+    pub rmb: bool,
 }
 impl InputState {
     pub fn new() -> Self {
         Self {
-            up: false,
-            down: false,
-            left: false,
-            right: false,
-            smaller: false,
-            bigger: false,
+            w: false,
+            s: false,
+            a: false,
+            d: false,
+            q: false,
+            e: false,
+            r: false,
             mouse: (0.0, 0.0),
+            lmb: false,
+            mmb: false,
+            rmb: false,
         }
     }
     pub fn get_xy(&self) -> (f32, f32) {
-        let x = (self.right as i32 - self.left as i32) as f32;
-        let y = (self.up as i32 - self.down as i32) as f32;
+        let x = (self.d as i32 - self.a as i32) as f32;
+        let y = (self.w as i32 - self.s as i32) as f32;
         let sx = x.abs() * 4.0 - x.abs() * y.abs() * 4.0 / 2.0;
         let sy = y.abs() * 4.0 - y.abs() * x.abs() * 4.0 / 2.0;
 
@@ -42,6 +52,7 @@ impl InputState {
 pub struct Object {
     pub position: [f32; 2],
     pub size: [f32; 2],
+    pub rotation: f32,
     pub data: Vec<super::Vertex>,
 }
 impl Object {
@@ -49,6 +60,7 @@ impl Object {
         Self {
             position: [0.0, 0.0],
             size: [0.0, 0.0],
+            rotation: 0.0,
             data: vec![],
         }
     }
@@ -87,50 +99,61 @@ impl Game {
         &mut self,
         name: String,
         data: Vec<super::Vertex>,
-        mut position: [f32; 2],
-        mut size: [f32; 2],
+        position: [f32; 2],
+        size: [f32; 2],
+        rotation: f32,
     ) {
         self.objects.insert(
             name.clone(),
             Object {
-                position: position,
-                size: size,
-                data: data,
+                position,
+                size,
+                rotation,
+                data,
             },
         );
         self.renderorder.push(name);
     }
     pub fn start(&mut self) {
         //Runs one time before the first Frame.
-        self.newobject("background".to_string(), BACKGROUND.to_vec(), [0.0, 0.0], [1.0, 1.0]);
+        self.newobject("background".to_string(), BACKGROUND.to_vec(), [0.0, 0.0], [1.0, 1.0], 0.0);
+        let objdata = data::make_circle(360);
         self.newobject(
             "player1".to_string(),
-            SQUARE.to_vec(),
+            objdata,
             [0.0, 0.0],
-            [0.5, 0.5],
+            [0.3, 0.3],
+            0.0
         );
         self.client.connect();
 
         println!("{:?}", self.renderorder);
+        
     }
     pub fn main(&mut self) {
         //Runs every single frame once.
-        println!("FPS:{} Ping:{}", fps(), get_ping());
+        //println!("FPS:{} Ping:{}", fps(), get_ping());
         let mut player = self.getobject("player1".to_string());
         player.position = [
             player.position[0] + delta_time() as f32 * self.input.get_xy().0 * player.size[0] * 8.0,
             player.position[1] + delta_time() as f32 * self.input.get_xy().1 * player.size[1] * 8.0,
         ];
-        player.size = [
-            player.size[0]
-                + player.size[0]
-                    * delta_time() as f32
-                    * (self.input.bigger as i32 - self.input.smaller as i32) as f32,
-            player.size[1]
-                + player.size[1]
-                    * delta_time() as f32
-                    * (self.input.bigger as i32 - self.input.smaller as i32) as f32,
-        ];
+        if self.input.r {
+            player.position = [0.0, 0.0];
+        }
+        player.rotation += 
+            delta_time() as f32
+                * (self.input.rmb as i32 - self.input.lmb as i32) as f32
+                * 5.0;
+        player.size =
+            player.size.map(|x|{
+                x
+                    + delta_time() as f32
+                    * (self.input.e as i32 - self.input.q as i32) as f32
+                    * player.size[0]
+                    * 2.0
+            });
+
         self.setobject("player1".to_string(), player);
     }
 
@@ -151,12 +174,13 @@ impl Game {
                         self.setobject(object.0.clone(), object.1.clone());
                     }
                     else {
-                        self.newobject(object.0.clone(), object.1.clone().data, object.1.position, object.1.position)
+                        self.newobject(object.0.clone(), object.1.clone().data, object.1.position, object.1.position, 0.0)
                     }
                 }
             }
 
         }
+
     }
 
 }

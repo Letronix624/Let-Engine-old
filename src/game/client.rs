@@ -165,6 +165,7 @@ impl Client {
                                 let obj = Object {
                                     position: [f32::from_be_bytes(buf[1+c..5+c].try_into().unwrap()), f32::from_be_bytes(buf[5+c..9+c].try_into().unwrap())],
                                     size: [f32::from_be_bytes(buf[9+c..13+c].try_into().unwrap()), f32::from_be_bytes(buf[13+c..17+c].try_into().unwrap())],
+                                    rotation: 0.0,
                                     data: SQUARE.to_vec(),
                                 };
                                 let objname = str::from_utf8(&buf[17+c..32+c]).unwrap();

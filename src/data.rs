@@ -1,5 +1,6 @@
 use bytemuck::{Pod, Zeroable};
 use vulkano::impl_vertex;
+use std::f64::consts::PI;
 
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, Zeroable, Pod)]
@@ -81,3 +82,22 @@ pub const SQUARE: [Vertex; 6] = [
         position: [1.0, 1.0],
     },
 ];
+
+#[allow(dead_code)]
+pub fn make_circle(corners: usize) -> Vec<Vertex>{
+    let mut result: Vec<Vertex> = vec![];
+    for i in 0..corners {
+        result.push(
+            Vertex{
+                position: [(PI as f32 * 2.0 / (i as f32)).cos(), (PI as f32 * 2.0 / (i as f32)).sin()]
+            }
+        );
+        result.push(
+            Vertex{
+                position: [(PI as f32 * 2.0 / ((i + 1) as f32)).cos(), (PI as f32 * 2.0 / ((i + 1) as f32)).sin()]
+            }
+        );
+        result.push(Vertex{position: [0.0, 0.0]});
+    };
+    result
+}
