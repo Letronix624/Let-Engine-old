@@ -1,62 +1,71 @@
 extern crate image;
 extern crate vulkano;
+use crate::consts::*;
 use super::data::*;
 use image::DynamicImage;
-use vulkano::memory::allocator::{StandardMemoryAllocator};
-use std::{sync::Arc, time::*};
-use vulkano::buffer::CpuBufferPool;
+use vulkano::image::{ImmutableImage, ImageDimensions, MipmapsCount};
+use vulkano::pipeline::graphics::color_blend::ColorBlendState;
+use vulkano::pipeline::graphics::input_assembly::PrimitiveTopology;
+use vulkano::sampler::{Sampler, SamplerCreateInfo, Filter, SamplerAddressMode};
+use std::fs;
+use std::io::Cursor;
+use std::{io::Write, sync::Arc, time::*};
+use vulkano::buffer::{CpuBufferPool, CpuAccessibleBuffer, BufferUsage};
 use vulkano::command_buffer::{
-    AutoCommandBufferBuilder, CommandBufferUsage, RenderPassBeginInfo, SubpassContents, allocator::StandardCommandBufferAllocator,
+    allocator::StandardCommandBufferAllocator, AutoCommandBufferBuilder, CommandBufferUsage,
+    PrimaryCommandBufferAbstract, RenderPassBeginInfo, SubpassContents,
 };
+use vulkano::descriptor_set::allocator::StandardDescriptorSetAllocator;
+use vulkano::descriptor_set::{PersistentDescriptorSet, WriteDescriptorSet};
 use vulkano::device::physical::PhysicalDevice;
 use vulkano::device::{
     physical::PhysicalDeviceType, DeviceCreateInfo, DeviceExtensions, QueueCreateInfo,
 };
 use vulkano::device::{Device, Queue};
 use vulkano::image::{view::ImageView, ImageAccess, ImageUsage, SwapchainImage};
-use vulkano::instance::{Instance, InstanceCreateInfo};
+use vulkano::instance::{debug::*, Instance, InstanceCreateInfo, InstanceExtensions};
+use vulkano::memory::allocator::StandardMemoryAllocator;
 use vulkano::pipeline::graphics::{
     input_assembly::InputAssemblyState, vertex_input::BuffersDefinition, viewport::Viewport,
     viewport::ViewportState,
 };
-use vulkano::pipeline::GraphicsPipeline;
+use vulkano::pipeline::{GraphicsPipeline, Pipeline};
 use vulkano::render_pass::RenderPass;
 use vulkano::render_pass::{Framebuffer, FramebufferCreateInfo, Subpass};
 use vulkano::shader::ShaderModule;
 use vulkano::swapchain::{
-    acquire_next_image, AcquireError, PresentMode, Surface, Swapchain,
-    SwapchainCreateInfo, SwapchainCreationError, SwapchainPresentInfo,
+    acquire_next_image, AcquireError, PresentMode, Surface, Swapchain, SwapchainCreateInfo,
+    SwapchainCreationError, SwapchainPresentInfo,
 };
 use vulkano::sync;
 use vulkano::sync::{FlushError, GpuFuture};
-use vulkano::{Version, library::VulkanLibrary};
+use vulkano::{library::VulkanLibrary, Version};
 use vulkano_win::VkSurfaceBuild;
 use winit::dpi::LogicalSize;
 use winit::{
     event_loop::EventLoop,
     window::{Fullscreen, Window, WindowBuilder},
 };
-mod vs {
+mod vertexshader {
     vulkano_shaders::shader! {
         ty: "vertex",
         path: "src/vert.glsl"
     }
 }
 
-mod fs {
+mod fragmentshader {
     vulkano_shaders::shader! {
         ty: "fragment",
         path: "src/frag.glsl"
     }
 }
 
-const WIDTH: u16 = 1000;
-const HEIGHT: u16 = 1000;
-const TITLE: &str = "Let - Vulkan";
+
 
 #[allow(unused)]
 pub struct App {
     instance: Arc<Instance>,
+    debugmessenger: Option<DebugUtilsMessenger>,
     pub surface: Arc<Surface>,
     device_extensions: DeviceExtensions,
     physical_device: Arc<PhysicalDevice>,
@@ -72,6 +81,7 @@ pub struct App {
     viewport: Viewport,
     framebuffers: Vec<Arc<Framebuffer>>,
     pub recreate_swapchain: bool,
+    tex_descriptors: Vec<Arc<PersistentDescriptorSet>>,
     previous_frame_end: Option<Box<dyn GpuFuture>>,
     pub vertices: Vec<Vertex>,
     vertex_buffer: CpuBufferPool<Vertex>,
@@ -83,6 +93,7 @@ pub struct App {
 impl App {
     pub fn initialize() -> (Self, EventLoop<()>) {
         let instance = Self::create_instance();
+        let debugmessenger = Self::setup_debug(&instance);
         let (event_loop, surface) = Self::create_window(&instance);
         let device_extensions = Self::create_device_extensions();
         let (physical_device, queue_family_index) =
@@ -93,9 +104,13 @@ impl App {
             queue_family_index,
         );
         let (swapchain, images) = Self::create_swapchain_and_images(&device, &surface);
+        
+        let memoryallocator = Arc::new(StandardMemoryAllocator::new_default(device.clone()));
 
-        let vs = vs::load(device.clone()).unwrap();
-        let fs = fs::load(device.clone()).unwrap();
+        let vertex_buffer: CpuBufferPool<Vertex> = CpuBufferPool::vertex_buffer(memoryallocator.clone().into());
+
+        let vs = vertexshader::load(device.clone()).unwrap();
+        let fs = fragmentshader::load(device.clone()).unwrap();
 
         println!(
             "Using device: {} (type: {:?})",
@@ -104,7 +119,87 @@ impl App {
         );
 
         let render_pass = Self::create_render_pass(&device, &swapchain);
-        let pipeline = Self::create_pipeline(&device, &render_pass, &vs, &fs);
+        let descriptor_set_allocator = StandardDescriptorSetAllocator::new(device.clone());
+        let commandbufferallocator =
+            StandardCommandBufferAllocator::new(device.clone(), Default::default());
+        let mut uploads = AutoCommandBufferBuilder::primary(
+            &commandbufferallocator,
+            queue.queue_family_index(),
+            CommandBufferUsage::OneTimeSubmit,
+        )
+        .unwrap();
+
+
+        let texture = {
+            let png_bytes = include_bytes!("../assets/textures/shidkitty69.png").to_vec();
+            let cursor = Cursor::new(png_bytes);
+            let decoder = png::Decoder::new(cursor);
+            let mut reader = decoder.read_info().unwrap();
+            let info = reader.info();
+            let dimensions = ImageDimensions::Dim2d {
+                width: info.width,
+                height: info.height,
+                array_layers: 1,
+            };
+            let mut image_data = Vec::new();
+            image_data.resize((info.width * info.height * 4) as usize, 0);
+            reader.next_frame(&mut image_data).unwrap();
+    
+            let image = ImmutableImage::from_iter(
+                &memoryallocator,
+                image_data,
+                dimensions,
+                MipmapsCount::One,
+                vulkano::format::Format::R8G8B8A8_SRGB,
+                &mut uploads,
+            )
+            .unwrap();
+            ImageView::new_default(image).unwrap()
+        };
+
+        
+        let sampler = Sampler::new(
+            device.clone(),
+            SamplerCreateInfo {
+                mag_filter: Filter::Nearest,
+                min_filter: Filter::Linear,
+                address_mode: [SamplerAddressMode::ClampToBorder, SamplerAddressMode::ClampToBorder, SamplerAddressMode::Repeat],
+                ..Default::default()
+            },
+        )
+        .unwrap();
+
+        let subpass = Subpass::from(render_pass.clone(), 0).unwrap();
+        let pipeline: Arc<GraphicsPipeline> = Self::create_pipeline(&device, &vs, &fs, subpass);
+
+        let numberone = CpuAccessibleBuffer::from_data(
+            &memoryallocator,
+            BufferUsage {
+                storage_buffer: true,
+                ..BufferUsage::empty()
+            },
+            false,
+            Object {
+                position: [0.0, 0.0],
+                size: [1.0, 1.7],
+                rotation: 0.0
+            }
+        )
+        .unwrap();
+        
+        let mut tex_descriptors = vec![];
+        let layout = pipeline.layout().set_layouts().get(0).unwrap();
+        tex_descriptors.push( //funny cat picture
+            PersistentDescriptorSet::new(
+                &descriptor_set_allocator,
+                layout.clone(),
+                [
+                        WriteDescriptorSet::image_view_sampler(0, texture, sampler),
+                        WriteDescriptorSet::buffer(1, numberone)
+                    ],
+            )
+            .unwrap()
+        );        
 
         let mut viewport = Viewport {
             origin: [0.0, 0.0],
@@ -113,17 +208,31 @@ impl App {
         };
         let framebuffers =
             Self::window_size_dependent_setup(&images, render_pass.clone(), &mut viewport);
+
+        
+
         let recreate_swapchain = false;
-        let previous_frame_end = Some(sync::now(device.clone()).boxed());
+
+        let previous_frame_end = Some(
+            uploads
+                .build()
+                .unwrap()
+                .execute(queue.clone())
+                .unwrap()
+                .boxed(),
+        );
 
         let vertices = vec![];
-        let memoryallocator = Arc::new(StandardMemoryAllocator::new_default(device.clone()));
-        let commandbufferallocator = StandardCommandBufferAllocator::new(device.clone(), Default::default());
-        let vertex_buffer = CpuBufferPool::vertex_buffer(memoryallocator.clone().into());
         let dt1 = unix_timestamp();
+        surface
+            .object()
+            .unwrap()
+            .downcast_ref::<Window>()
+            .unwrap().set_visible(true);
         (
             Self {
                 instance,
+                debugmessenger,
                 surface,
                 device_extensions,
                 physical_device,
@@ -139,6 +248,7 @@ impl App {
                 viewport,
                 framebuffers,
                 recreate_swapchain,
+                tex_descriptors,
                 previous_frame_end,
                 vertices,
                 memoryallocator,
@@ -151,7 +261,6 @@ impl App {
     }
 
     fn create_instance() -> Arc<Instance> {
-
         let library = match VulkanLibrary::new() {
             Err(_) => {
                 println!("This PC does not support Vulkan.\nProgram can not be started.");
@@ -160,28 +269,97 @@ impl App {
             Ok(a) => a,
         };
         let required_extensions = vulkano_win::required_extensions(&library);
+        let extensions = InstanceExtensions {
+            ext_debug_utils: true,
+            ..required_extensions
+        };
+        #[allow(unused)]
+        let layers: Vec<String> = vec![];
+        #[cfg(debug_assertions)]
+        let layers = vec![
+                "VK_LAYER_KHRONOS_validation".to_owned(),
+                "VK_LAYER_VALVE_steam_overlay_64".to_owned(),
+        ];
+
         let gameinfo = InstanceCreateInfo {
-            application_name: Some("Let Vulkan Test".into()),
+            enabled_layers: layers,
+            application_name: Some("Let Engine Test".into()),
             application_version: Version {
                 major: (0),
                 minor: (0),
                 patch: (0),
             },
-            enabled_extensions: required_extensions,
-            engine_name: Some("LetsTestVulkanEngine".into()),
+            enabled_extensions: extensions,
+            engine_name: Some("Let Engine".into()),
             engine_version: Version {
                 major: (0),
                 minor: (0),
-                patch: (0),
+                patch: (1),
             },
             ..Default::default()
         };
         Instance::new(library, gameinfo).expect("Couldn't start Vulkan.")
     }
+    fn setup_debug(instance: &Arc<Instance>) -> Option<DebugUtilsMessenger> {
+        unsafe {
+            DebugUtilsMessenger::new(
+                instance.clone(),
+                DebugUtilsMessengerCreateInfo {
+                    message_severity: DebugUtilsMessageSeverity {
+                        error: true,
+                        warning: true,
+                        information: true,
+                        verbose: true,
+                        ..DebugUtilsMessageSeverity::empty()
+                    },
+                    message_type: DebugUtilsMessageType {
+                        general: true,
+                        validation: true,
+                        performance: true,
+                        ..DebugUtilsMessageType::empty()
+                    },
+                    ..DebugUtilsMessengerCreateInfo::user_callback(Arc::new(|msg| {
+                        let severity = if msg.severity.error {
+                            "error"
+                        } else if msg.severity.warning {
+                            "warning"
+                        } else if msg.severity.information {
+                            "information"
+                        } else if msg.severity.verbose {
+                            "verbose"
+                        } else {
+                            panic!("no-impl");
+                        };
+
+                        let ty = if msg.ty.general {
+                            "general"
+                        } else if msg.ty.validation {
+                            "validation"
+                        } else if msg.ty.performance {
+                            "performance"
+                        } else {
+                            panic!("no-impl");
+                        };
+                        //////////////////////////////////////
+                        if severity != "verbose" {
+                            println!(
+                                "{} {} {}: {}",
+                                msg.layer_prefix.unwrap_or("unknown"),
+                                ty,
+                                severity,
+                                msg.description
+                            );
+                        }
+                    }))
+                },
+            )
+            .ok()
+        }
+    }
 
     fn create_window(instance: &Arc<Instance>) -> (EventLoop<()>, Arc<Surface>) {
         let icon: DynamicImage =
-            image::load_from_memory(include_bytes!("../handsomesquidward.bmp")).unwrap();
+            image::load_from_memory(include_bytes!("../assets/handsomesquidward.bmp")).unwrap();
         let icondimension = (icon.height(), icon.width());
         let iconbytes: Vec<u8> = icon.into_rgba8().into_raw();
         let event_loop = winit::event_loop::EventLoopBuilder::new().build();
@@ -196,6 +374,7 @@ impl App {
             ))
             .with_always_on_top(true)
             .with_decorations(true)
+            .with_visible(false)
             .build_vk_surface(&event_loop, instance.clone())
             .unwrap();
         //surface.window().set_fullscreen(Some(Fullscreen::Exclusive(MonitorHandle::video_modes(&surface.window().current_monitor().unwrap()).next().unwrap())));
@@ -246,7 +425,6 @@ impl App {
         queue_family_index: u32,
     ) -> (Arc<Device>, Arc<Queue>) {
         let (device, mut queues) = Device::new(
-            // Which physical device to connect to.
             physical_device.clone(),
             DeviceCreateInfo {
                 enabled_extensions: device_extensions.clone(),
@@ -269,7 +447,6 @@ impl App {
             .physical_device()
             .surface_capabilities(&surface, Default::default())
             .unwrap();
-        println!("{:?}", surface_capabilities.supported_composite_alpha);
         let image_format = Some(
             device
                 .physical_device()
@@ -281,7 +458,13 @@ impl App {
             color_attachment: true,
             ..ImageUsage::empty()
         };
-        let innersize = surface.object().unwrap().downcast_ref::<Window>().unwrap().inner_size().into();
+        let innersize = surface
+            .object()
+            .unwrap()
+            .downcast_ref::<Window>()
+            .unwrap()
+            .inner_size()
+            .into();
         let create_info = SwapchainCreateInfo {
             min_image_count: surface_capabilities.min_image_count,
             image_format,
@@ -347,10 +530,7 @@ impl App {
         };
         swapchain
     }
-    fn create_render_pass(
-        device: &Arc<Device>,
-        swapchain: &Arc<Swapchain>,
-    ) -> Arc<RenderPass> {
+    fn create_render_pass(device: &Arc<Device>, swapchain: &Arc<Swapchain>) -> Arc<RenderPass> {
         vulkano::single_pass_renderpass!(
             device.clone(),
             attachments: {
@@ -370,17 +550,18 @@ impl App {
     }
     fn create_pipeline(
         device: &Arc<Device>,
-        render_pass: &Arc<RenderPass>,
         vs: &Arc<ShaderModule>,
         fs: &Arc<ShaderModule>,
+        subpass: Subpass,
     ) -> Arc<GraphicsPipeline> {
         GraphicsPipeline::start()
-            .render_pass(Subpass::from(render_pass.clone(), 0).unwrap())
             .vertex_input_state(BuffersDefinition::new().vertex::<Vertex>())
             .input_assembly_state(InputAssemblyState::new())
             .vertex_shader(vs.entry_point("main").unwrap(), ())
             .viewport_state(ViewportState::viewport_dynamic_scissor_irrelevant())
             .fragment_shader(fs.entry_point("main").unwrap(), ())
+            .color_blend_state(ColorBlendState::new(subpass.num_color_attachments()).blend_alpha())
+            .render_pass(subpass)
             .build(device.clone())
             .unwrap()
     }
@@ -410,18 +591,26 @@ impl App {
     pub fn fullscreen(surface: Arc<Surface>) {
         let window = surface.object().unwrap().downcast_ref::<Window>().unwrap();
         if window.fullscreen() == None {
-            window.set_fullscreen(Some(Fullscreen::Borderless(
-                window.current_monitor(),
-            ))); //borderless
-                 //surface.window().set_fullscreen(Some(Fullscreen::Exclusive(MonitorHandle::video_modes(&surface.window().current_monitor().unwrap()).next().unwrap()))); //exclusive
+            window.set_fullscreen(Some(Fullscreen::Borderless(window.current_monitor())));
+        //borderless
+        //surface.window().set_fullscreen(Some(Fullscreen::Exclusive(MonitorHandle::video_modes(&surface.window().current_monitor().unwrap()).next().unwrap()))); //exclusive
         } else {
             window.set_fullscreen(None)
         }
     }
     pub fn redrawevent(&mut self) {
-        let window = self.surface.object().unwrap().downcast_ref::<Window>().unwrap();
+        let window = self
+            .surface
+            .object()
+            .unwrap()
+            .downcast_ref::<Window>()
+            .unwrap();
         self.dt1 = unix_timestamp();
+
         let sub_buffer = self.vertex_buffer.from_iter(self.vertices.clone()).unwrap();
+        
+
+
         let dimensions = window.inner_size();
         if dimensions.width == 0 || dimensions.height == 0 {
             return;
@@ -467,13 +656,21 @@ impl App {
             .begin_render_pass(
                 RenderPassBeginInfo {
                     clear_values: vec![Some([0.0, 0.0, 0.0, 1.0].into())],
-                    ..RenderPassBeginInfo::framebuffer(self.framebuffers[image_num as usize].clone())
+                    ..RenderPassBeginInfo::framebuffer(
+                        self.framebuffers[image_num as usize].clone(),
+                    )
                 },
                 SubpassContents::Inline,
             )
             .unwrap()
             .set_viewport(0, [self.viewport.clone()])
             .bind_pipeline_graphics(self.pipeline.clone())
+            .bind_descriptor_sets(
+                vulkano::pipeline::PipelineBindPoint::Graphics,
+                self.pipeline.layout().clone(),
+                0,
+                self.tex_descriptors.clone(),
+            )
             .bind_vertex_buffers(0, sub_buffer.clone())
             .draw(self.vertices.len() as u32, 1, 0, 0)
             .unwrap()

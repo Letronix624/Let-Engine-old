@@ -149,34 +149,39 @@ impl Client {
                 match buf {
                     msg if msg.starts_with(&[5u8]) => set_ping(),
                     msg if msg.starts_with(&[1u8]) => {
-                        
                         let mut diter = buf.iter().enumerate();
                         let mut data = diter.next();
-                        while data.is_some() && data.unwrap().1 != &0 { //continure doing this, let let let let let let let let le tlet l.~!
+                        while data.is_some() && data.unwrap().1 != &0 {
+                            //continure doing this, let let let let let let let let le tlet l.~!
                             let d = data.unwrap().1;
-                            
-                            if d == &1{
 
+                            if d == &1 {
                                 let c = data.unwrap().0;
-                                for _ in 1..32{diter.next();};
+                                for _ in 1..32 {
+                                    diter.next();
+                                }
                                 data = diter.next();
 
-                                
                                 let obj = Object {
-                                    position: [f32::from_be_bytes(buf[1+c..5+c].try_into().unwrap()), f32::from_be_bytes(buf[5+c..9+c].try_into().unwrap())],
-                                    size: [f32::from_be_bytes(buf[9+c..13+c].try_into().unwrap()), f32::from_be_bytes(buf[13+c..17+c].try_into().unwrap())],
+                                    position: [
+                                        f32::from_be_bytes(buf[1 + c..5 + c].try_into().unwrap()),
+                                        f32::from_be_bytes(buf[5 + c..9 + c].try_into().unwrap()),
+                                    ],
+                                    size: [
+                                        f32::from_be_bytes(buf[9 + c..13 + c].try_into().unwrap()),
+                                        f32::from_be_bytes(buf[13 + c..17 + c].try_into().unwrap()),
+                                    ],
                                     rotation: 0.0,
                                     data: SQUARE.to_vec(),
                                 };
-                                let objname = str::from_utf8(&buf[17+c..32+c]).unwrap();
+                                let objname = str::from_utf8(&buf[17 + c..32 + c]).unwrap();
                                 GAMEOBJECTS.lock().unwrap().insert(objname.to_string(), obj);
-                            }
-                            else {
+                            } else {
                                 break;
                             }
                         }
                     }
-                    _ => ()
+                    _ => (),
                 }
             } else {
                 break;

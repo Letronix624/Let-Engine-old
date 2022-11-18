@@ -3,12 +3,10 @@ use super::Object;
 use local_ip_address::local_ip;
 use std::collections::HashMap;
 use std::io::{ErrorKind, Read, Result, Write};
-use std::net::{IpAddr, SocketAddr, TcpListener, TcpStream, UdpSocket};
-use std::sync::{Mutex, Arc};
-use std::thread;
 use std::iter::zip;
-use std::thread::sleep;
-use std::time::Duration;
+use std::net::{IpAddr, SocketAddr, TcpStream, UdpSocket};
+use std::sync::{Arc, Mutex};
+use std::thread;
 
 lazy_static::lazy_static! {
     static ref CONNECTIONS: Mutex<HashMap<SocketAddr, TcpStream>> = Mutex::new(HashMap::new());
@@ -23,12 +21,6 @@ pub struct Server {
 }
 
 impl Server {
-    pub fn empty() -> Self {
-        Self {
-            ip: IpAddr::from([0; 4]),
-            port: 0,
-        }
-    }
     pub fn init() -> Result<Server> {
         let ip: IpAddr;
         let port = 7777;
@@ -41,7 +33,7 @@ impl Server {
 
         Ok(Self { ip, port })
     }
-    pub fn start(&mut self) -> Result<()>{
+    pub fn start(&mut self) -> Result<()> {
         let udpserver = UdpSocket::bind(format!("{}:{}", &self.ip, &self.port))?;
         let udpserver2 = udpserver.try_clone()?;
         thread::spawn(move || Self::receiveudp(udpserver));
@@ -72,8 +64,8 @@ impl Server {
                         match std::str::from_utf8(&buf) {
                             Ok(t) => {
                                 println!("TCP - {addr}: {t}");
-                            },
-                            Err(_) => ()
+                            }
+                            Err(_) => (),
                         };
                     } else {
                         break;
@@ -101,26 +93,29 @@ impl Server {
                         Ok(_) => (),
                         Err(_) => break,
                     },
-                    _ => {
-                        match buf[0] {
-                            1 => {
-                                let obj = Object {
-                                    position: [f32::from_be_bytes(buf[1..5].try_into().unwrap()), f32::from_be_bytes(buf[5..9].try_into().unwrap())],
-                                    size: [f32::from_be_bytes(buf[9..13].try_into().unwrap()), f32::from_be_bytes(buf[13..17].try_into().unwrap())],
-                                    rotation: 0.0,
-                                    data: super::SQUARE.to_vec(),
-                                };
-                                {
-                                    let mut pd = PLAYERDATA.lock().unwrap();
-                                    pd.insert(addr, obj);
-                                }
-
-                            }
-                            _ => {
-                                println!("{:?}", buf)
+                    _ => match buf[0] {
+                        1 => {
+                            let obj = Object {
+                                position: [
+                                    f32::from_be_bytes(buf[1..5].try_into().unwrap()),
+                                    f32::from_be_bytes(buf[5..9].try_into().unwrap()),
+                                ],
+                                size: [
+                                    f32::from_be_bytes(buf[9..13].try_into().unwrap()),
+                                    f32::from_be_bytes(buf[13..17].try_into().unwrap()),
+                                ],
+                                rotation: 0.0,
+                                data: super::SQUARE.to_vec(),
+                            };
+                            {
+                                let mut pd = PLAYERDATA.lock().unwrap();
+                                pd.insert(addr, obj);
                             }
                         }
-                    }
+                        _ => {
+                            println!("{:?}", buf)
+                        }
+                    },
                 }
             }
         }
@@ -132,27 +127,30 @@ impl Server {
         }
         Ok(())
     }
-    pub fn broadcastobjs(&self) -> Result<()>{
-        
+    pub fn broadcastobjs(&self) -> Result<()> {
         match UDP.clone().lock().unwrap().as_ref() {
             None => (),
             Some(t) => {
                 let mut buf = [0; 1024];
-                for addr in CONNECTIONS.lock().unwrap().keys() { // for every connection
+                for addr in CONNECTIONS.lock().unwrap().keys() {
+                    // for every connection
                     let mut oid = 0;
-                    for obj in zip(PLAYERDATA.lock().unwrap().iter(), 0..){ // for every online game object
-                        if obj.0.0 != addr {
-                            let object = obj.0.1;
-                            
-                            let mut namebuf: [u8; 15]= [0 ;15];
-                            let name = format!("player{}", obj.1+2);
+                    for obj in zip(PLAYERDATA.lock().unwrap().iter(), 0..) {
+                        // for every online game object
+                        if obj.0 .0 != addr {
+                            let object = obj.0 .1;
+
+                            let mut namebuf: [u8; 15] = [0; 15];
+                            let name = format!("player{}", obj.1 + 2);
                             namebuf[0..name.len()].copy_from_slice(name.as_bytes());
-                            buf[0+oid] = 1;
-                            buf[1+oid..5+oid].copy_from_slice(&object.position[0].to_be_bytes());
-                            buf[5+oid..9+oid].copy_from_slice(&object.position[1].to_be_bytes());
-                            buf[9+oid..13+oid].copy_from_slice(&object.size[0].to_be_bytes());
-                            buf[13+oid..17+oid].copy_from_slice(&object.size[1].to_be_bytes());
-                            buf[17+oid..32+oid].copy_from_slice(&namebuf);
+                            buf[0 + oid] = 1;
+                            buf[1 + oid..5 + oid]
+                                .copy_from_slice(&object.position[0].to_be_bytes());
+                            buf[5 + oid..9 + oid]
+                                .copy_from_slice(&object.position[1].to_be_bytes());
+                            buf[9 + oid..13 + oid].copy_from_slice(&object.size[0].to_be_bytes());
+                            buf[13 + oid..17 + oid].copy_from_slice(&object.size[1].to_be_bytes());
+                            buf[17 + oid..32 + oid].copy_from_slice(&namebuf);
                             oid = oid + 32; // 0, 32, 64, 96
                         }
                     }

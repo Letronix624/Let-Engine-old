@@ -1,12 +1,14 @@
 mod client;
+mod sound;
 
-use std::{collections::HashMap};
+use std::collections::HashMap;
 
-use crate::data::{TRIANGLE, self};
+use crate::data::{self};
 
 use super::{delta_time, fps, BACKGROUND, SQUARE};
 
 use client::{get_ping, Client};
+
 
 #[derive(Clone, Copy)]
 pub struct InputState {
@@ -21,6 +23,7 @@ pub struct InputState {
     pub lmb: bool,
     pub mmb: bool,
     pub rmb: bool,
+    pub vsd: f32,
 }
 impl InputState {
     pub fn new() -> Self {
@@ -36,6 +39,7 @@ impl InputState {
             lmb: false,
             mmb: false,
             rmb: false,
+            vsd: 0.0,
         }
     }
     pub fn get_xy(&self) -> (f32, f32) {
@@ -84,12 +88,13 @@ impl Game {
             olddata: Object::empty(),
         }
     }
-    fn getobject(&self, name: String) -> Object {
+    pub fn getobject(&self, name: String) -> Object {
         return self.objects[&name].clone();
     }
-    fn setobject(&mut self, name: String, object: Object) {
+    pub fn setobject(&mut self, name: String, object: Object) {
         self.objects.insert(name, object);
     }
+    #[allow(unused)]
     fn deleteobject(&mut self, name: String) {
         self.objects.remove(&name);
         let index = self.renderorder.iter().position(|x| *x == name).unwrap();
@@ -116,23 +121,31 @@ impl Game {
     }
     pub fn start(&mut self) {
         //Runs one time before the first Frame.
-        self.newobject("background".to_string(), BACKGROUND.to_vec(), [0.0, 0.0], [1.0, 1.0], 0.0);
-        let objdata = data::make_circle(360);
+        self.newobject(
+            "background".to_string(),
+            BACKGROUND.to_vec(),
+            [0.0, 0.0],
+            [1.0, 1.0],
+            0.0,
+        );
         self.newobject(
             "player1".to_string(),
-            objdata,
+            data::make_circle(10),
             [0.0, 0.0],
             [0.3, 0.3],
-            0.0
+            0.0,
         );
         self.client.connect();
 
         println!("{:?}", self.renderorder);
-        
+
+        //sound::memeloop();
     }
     pub fn main(&mut self) {
         //Runs every single frame once.
+
         //println!("FPS:{} Ping:{}", fps(), get_ping());
+
         let mut player = self.getobject("player1".to_string());
         player.position = [
             player.position[0] + delta_time() as f32 * self.input.get_xy().0 * player.size[0] * 8.0,
@@ -141,18 +154,22 @@ impl Game {
         if self.input.r {
             player.position = [0.0, 0.0];
         }
-        player.rotation += 
-            delta_time() as f32
-                * (self.input.rmb as i32 - self.input.lmb as i32) as f32
-                * 5.0;
-        player.size =
-            player.size.map(|x|{
-                x
-                    + delta_time() as f32
-                    * (self.input.e as i32 - self.input.q as i32) as f32
-                    * player.size[0]
-                    * 2.0
-            });
+        player.rotation +=
+            delta_time() as f32 * (self.input.rmb as i32 - self.input.lmb as i32) as f32 * 5.0;
+        player.size = player.size.map(|x| {
+            x + delta_time() as f32
+                * (self.input.e as i32 - self.input.q as i32) as f32
+                * player.size[0]
+                * 2.0
+        });
+
+        if player.data.len() < 4 && self.input.vsd == -1.0 {
+            self.input.vsd = 0.0;
+        }
+        player.data = data::make_circle(
+            ((player.data.len() / 3) as isize + self.input.vsd as isize) as usize,
+        );
+        self.input.vsd = 0.0;
 
         self.setobject("player1".to_string(), player);
     }
@@ -169,18 +186,20 @@ impl Game {
             }
             {
                 let objects = client::GAMEOBJECTS.lock().unwrap();
-                for object in objects.iter(){
-                    if self.objects.contains_key(object.0){
+                for object in objects.iter() {
+                    if self.objects.contains_key(object.0) {
                         self.setobject(object.0.clone(), object.1.clone());
-                    }
-                    else {
-                        self.newobject(object.0.clone(), object.1.clone().data, object.1.position, object.1.position, 0.0)
+                    } else {
+                        self.newobject(
+                            object.0.clone(),
+                            object.1.clone().data,
+                            object.1.position,
+                            object.1.position,
+                            0.0,
+                        )
                     }
                 }
             }
-
         }
-
     }
-
 }

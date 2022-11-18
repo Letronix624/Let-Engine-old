@@ -1,11 +1,21 @@
 use bytemuck::{Pod, Zeroable};
-use vulkano::impl_vertex;
 use std::f64::consts::PI;
+use vulkano::impl_vertex;
 
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, Zeroable, Pod)]
 pub struct Vertex {
     pub position: [f32; 2],
+}
+
+//struct object with position, size, rotation.
+
+#[repr(C)]
+#[derive(Clone, Copy, Debug, Default, Zeroable, Pod)]
+pub struct Object {
+    pub position: [f32; 2],
+    pub size: [f32; 2],
+    pub rotation: f32, //In radians
 }
 
 impl_vertex!(Vertex, position);
@@ -84,20 +94,24 @@ pub const SQUARE: [Vertex; 6] = [
 ];
 
 #[allow(dead_code)]
-pub fn make_circle(corners: usize) -> Vec<Vertex>{
+pub fn make_circle(corners: usize) -> Vec<Vertex> {
     let mut result: Vec<Vertex> = vec![];
     for i in 0..corners {
-        result.push(
-            Vertex{
-                position: [(PI as f32 * 2.0 / (i as f32)).cos(), (PI as f32 * 2.0 / (i as f32)).sin()]
-            }
-        );
-        result.push(
-            Vertex{
-                position: [(PI as f32 * 2.0 / ((i + 1) as f32)).cos(), (PI as f32 * 2.0 / ((i + 1) as f32)).sin()]
-            }
-        );
-        result.push(Vertex{position: [0.0, 0.0]});
-    };
+        result.push(Vertex {
+            position: [
+                (PI * 2.0 * ((i as f64) / corners as f64)).cos() as f32,
+                (PI * 2.0 * ((i as f64) / corners as f64)).sin() as f32,
+            ],
+        });
+        result.push(Vertex {
+            position: [
+                (PI * 2.0 * (((i + 1) as f64) / corners as f64)).cos() as f32,
+                (PI * 2.0 * (((i + 1) as f64) / corners as f64)).sin() as f32,
+            ],
+        });
+        result.push(Vertex {
+            position: [0.0, 0.0],
+        });
+    }
     result
 }

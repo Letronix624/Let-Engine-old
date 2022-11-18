@@ -1,25 +1,28 @@
 //#![windows_subsystem = "windows"]
+
+mod data;
+mod game;
+mod server;
+mod vulkan;
+mod consts;
+
 extern crate image;
 extern crate vulkano;
 use data::*;
 use game::{Game, Object};
 use server::Server;
 use std::collections::HashMap;
+use std::net::TcpListener;
 use std::sync::{Arc, Mutex};
 use std::thread::{self, sleep};
 use std::time::*;
-use std::net::TcpListener;
-use winit::event::{ElementState, VirtualKeyCode, MouseButton};
+use winit::event::{ElementState, MouseButton, MouseScrollDelta, VirtualKeyCode};
 use winit::{
     event::{Event, WindowEvent},
     event_loop::ControlFlow,
-    window::Window
+    window::Window,
 };
 
-mod data;
-mod game;
-mod vulkan;
-mod server;
 
 lazy_static::lazy_static! {
     static ref GAME: Mutex<Game> = Mutex::new(Game::init());
@@ -56,7 +59,7 @@ fn main() {
     }
 }
 
-fn server() -> std::io::Result<()>{
+fn server() -> std::io::Result<()> {
     //start
     let socket = Arc::new(Mutex::new(match Server::init() {
         Ok(t) => t,
@@ -67,15 +70,11 @@ fn server() -> std::io::Result<()>{
 
     socket.clone().lock().unwrap().start()?;
 
-
     //tick (62.4/s)
     let serv = socket.clone();
-    thread::spawn(move || {
-        loop{
-            serv.lock().unwrap().broadcastobjs().unwrap();
-            sleep(Duration::from_nanos(16025641));
-        }
-        
+    thread::spawn(move || loop {
+        serv.lock().unwrap().broadcastobjs().unwrap();
+        sleep(Duration::from_nanos(16025641));
     });
     //main
     let listener: TcpListener;
@@ -94,7 +93,7 @@ fn server() -> std::io::Result<()>{
     Ok(())
 }
 
-fn client(){
+fn client() {
     // let game = App::initialize();
     // GAME.lock().unwrap()mainloop();
     GAME.lock().unwrap().start();
@@ -126,27 +125,33 @@ fn client(){
                 app.recreate_swapchain = true;
             }
             Event::WindowEvent {
-                event: WindowEvent::MouseInput {button, state, ..},
+                event: WindowEvent::MouseInput { button, state, .. },
                 ..
             } => {
-                match button{
+                match button {
                     MouseButton::Left => {
-                        GAME.lock().unwrap().input.lmb =
-                            state == ElementState::Pressed;
-                    },
+                        GAME.lock().unwrap().input.lmb = state == ElementState::Pressed;
+                    }
                     MouseButton::Middle => {
-                        GAME.lock().unwrap().input.mmb =
-                            state == ElementState::Pressed;
-                    },
+                        GAME.lock().unwrap().input.mmb = state == ElementState::Pressed;
+                    }
                     MouseButton::Right => {
-                        GAME.lock().unwrap().input.rmb =
-                            state == ElementState::Pressed;
-                    },
+                        GAME.lock().unwrap().input.rmb = state == ElementState::Pressed;
+                    }
                     MouseButton::Other(_t) => {
                         //println!("{_t}");
                     }
                 }
             }
+            Event::WindowEvent {
+                event: WindowEvent::MouseWheel { delta, .. },
+                ..
+            } => match delta {
+                MouseScrollDelta::LineDelta(.., t) => {
+                    GAME.lock().unwrap().input.vsd = t;
+                }
+                _ => (),
+            },
             Event::WindowEvent {
                 event: WindowEvent::KeyboardInput { input, .. },
                 ..
@@ -159,36 +164,31 @@ fn client(){
                             }
                         }
                         VirtualKeyCode::W => {
-                            GAME.lock().unwrap().input.w =
-                                input.state == ElementState::Pressed;
+                            GAME.lock().unwrap().input.w = input.state == ElementState::Pressed;
                         }
                         VirtualKeyCode::A => {
-                            GAME.lock().unwrap().input.a =
-                                input.state == ElementState::Pressed;
+                            GAME.lock().unwrap().input.a = input.state == ElementState::Pressed;
                         }
                         VirtualKeyCode::S => {
-                            GAME.lock().unwrap().input.s =
-                                input.state == ElementState::Pressed;
+                            GAME.lock().unwrap().input.s = input.state == ElementState::Pressed;
                         }
                         VirtualKeyCode::D => {
-                            GAME.lock().unwrap().input.d =
-                                input.state == ElementState::Pressed;
+                            GAME.lock().unwrap().input.d = input.state == ElementState::Pressed;
                         }
                         VirtualKeyCode::Q => {
-                            GAME.lock().unwrap().input.q =
-                                input.state == ElementState::Pressed;
+                            GAME.lock().unwrap().input.q = input.state == ElementState::Pressed;
                         }
                         VirtualKeyCode::E => {
-                            GAME.lock().unwrap().input.e =
-                                input.state == ElementState::Pressed;
+                            GAME.lock().unwrap().input.e = input.state == ElementState::Pressed;
                         }
                         VirtualKeyCode::R => {
-                            GAME.lock().unwrap().input.r =
-                                input.state == ElementState::Pressed;
+                            GAME.lock().unwrap().input.r = input.state == ElementState::Pressed;
                         }
-                        VirtualKeyCode::Escape => if input.state == ElementState::Pressed {
-                            *control_flow = ControlFlow::Exit;
-                        },
+                        VirtualKeyCode::Escape => {
+                            if input.state == ElementState::Pressed {
+                                *control_flow = ControlFlow::Exit;
+                            }
+                        }
 
                         _ => (),
                     }
@@ -198,7 +198,13 @@ fn client(){
                 event: WindowEvent::CursorMoved { position, .. },
                 ..
             } => {
-                let dim = app.surface.object().unwrap().downcast_ref::<Window>().unwrap().inner_size();
+                let dim = app
+                    .surface
+                    .object()
+                    .unwrap()
+                    .downcast_ref::<Window>()
+                    .unwrap()
+                    .inner_size();
                 GAME.lock().unwrap().input.mouse = (
                     (position.x as f32 / dim.width as f32) * 2.0 - 1.0,
                     (position.y as f32 / dim.height as f32) * 2.0 - 1.0,
@@ -214,14 +220,22 @@ fn client(){
                 let objects: HashMap<String, Object>;
                 objects = GAME.lock().unwrap().objects.clone();
 
-                for obj in GAME.lock().unwrap().renderorder.iter().map(|x| {
-                    objects.get(x).unwrap()
-                }) {
+                for obj in GAME
+                    .lock()
+                    .unwrap()
+                    .renderorder
+                    .iter()
+                    .map(|x| objects.get(x).unwrap())
+                {
                     for vertex in obj.data.iter() {
                         let hypo = vertex.position[0].hypot(vertex.position[1]);
                         let rotatedpos: [f32; 2] = [
-                            (f32::atan2(vertex.position[1], vertex.position[0]) + obj.rotation).cos() * hypo, // √(2) ÷ 2 × √(2)
-                            (f32::atan2(vertex.position[1], vertex.position[0]) + obj.rotation).sin() * hypo//  hypo  /// x = cos(cos-1(vx : sqrt(vx^2 + vy^2) + obj.rotation)) * hypo, ;
+                            (f32::atan2(vertex.position[1], vertex.position[0]) + obj.rotation)
+                                .cos()
+                                * hypo, // √(2) ÷ 2 × √(2)
+                            (f32::atan2(vertex.position[1], vertex.position[0]) + obj.rotation)
+                                .sin()
+                                * hypo, //  hypo  /// x = cos(cos-1(vx : sqrt(vx^2 + vy^2) + obj.rotation)) * hypo, ;
                         ];
                         app.vertices.push(Vertex {
                             position: [
@@ -231,7 +245,6 @@ fn client(){
                         });
                     }
                 }
-
 
                 GAME.lock().unwrap().main();
             }
