@@ -45,6 +45,7 @@ fn fps() -> u16 {
 }
 
 fn main() {
+    std::thread::sleep(std::time::Duration::from_secs(2));
     let args: Vec<String> = std::env::args().collect();
     let server_mode = args.contains(&"--server".to_string());
     if server_mode {
@@ -216,35 +217,53 @@ fn client() {
                     DELTA_TIME = unix_timestamp() - app.dt1;
                     FPS = (1.0 / DELTA_TIME) as u16;
                 }
-                app.vertices = vec![];
+                
                 let objects: HashMap<String, Object>;
                 objects = GAME.lock().unwrap().objects.clone();
 
-                for obj in GAME
+                app.vertices = vec![];
+                app.player = objects.get("player1").unwrap().clone();
+
+                for i in 
+                    GAME
                     .lock()
                     .unwrap()
                     .renderorder
                     .iter()
-                    .map(|x| objects.get(x).unwrap())
-                {
-                    for vertex in obj.data.iter() {
-                        let hypo = vertex.position[0].hypot(vertex.position[1]);
-                        let rotatedpos: [f32; 2] = [
-                            (f32::atan2(vertex.position[1], vertex.position[0]) + obj.rotation)
-                                .cos()
-                                * hypo, // √(2) ÷ 2 × √(2)
-                            (f32::atan2(vertex.position[1], vertex.position[0]) + obj.rotation)
-                                .sin()
-                                * hypo, //  hypo  /// x = cos(cos-1(vx : sqrt(vx^2 + vy^2) + obj.rotation)) * hypo, ;
-                        ];
-                        app.vertices.push(Vertex {
-                            position: [
-                                rotatedpos[0] * obj.size[0] + obj.position[0],
-                                rotatedpos[1] * obj.size[1] + obj.position[1],
-                            ],
-                        });
-                    }
-                }
+                    .map(|x|{
+                            objects.get(x).unwrap()
+                        }
+                    ){
+                    app.vertices.append(&mut i.data.clone());
+                };
+                
+
+
+                // for obj in GAME
+                //     .lock()
+                //     .unwrap()
+                //     .renderorder
+                //     .iter()
+                //     .map(|x| objects.get(x).unwrap())
+                // {
+                //     for vertex in obj.data.iter() {
+                //         let hypo = vertex.position[0].hypot(vertex.position[1]);
+                //         let rotatedpos: [f32; 2] = [
+                //             (f32::atan2(vertex.position[1], vertex.position[0]) + obj.rotation)
+                //                 .cos()
+                //                 * hypo, // √(2) ÷ 2 × √(2)
+                //             (f32::atan2(vertex.position[1], vertex.position[0]) + obj.rotation)
+                //                 .sin()
+                //                 * hypo, //  hypo  /// x = cos(cos-1(vx : sqrt(vx^2 + vy^2) + obj.rotation)) * hypo, ;
+                //         ];
+                //         app.vertices.push(Vertex {
+                //             position: [
+                //                 rotatedpos[0] * obj.size[0] + obj.position[0],
+                //                 rotatedpos[1] * obj.size[1] + obj.position[1],
+                //             ],
+                //         });
+                //     }
+                // }
 
                 GAME.lock().unwrap().main();
             }

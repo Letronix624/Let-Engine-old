@@ -139,12 +139,12 @@ impl Game {
 
         println!("{:?}", self.renderorder);
 
-        //sound::memeloop();
+        sound::memeloop();
     }
     pub fn main(&mut self) {
         //Runs every single frame once.
 
-        //println!("FPS:{} Ping:{}", fps(), get_ping());
+        println!("FPS:{} Ping:{}", fps(), get_ping());
 
         let mut player = self.getobject("player1".to_string());
         player.position = [

@@ -3,7 +3,7 @@
 layout (location = 0) in vec2 position;
 layout (location = 0) out int obj1;
 layout (location = 1) out vec4 vertex_color;
-layout (set = 0, binding = 1) buffer Data {
+layout (set = 1, binding = 0) uniform Data {
     vec2 position;
     vec2 size;
     float rotation;
@@ -33,13 +33,24 @@ vec4 colors[] = vec4[](
     skyblue // top right
 );
 void main() {
-    // vec2 pos = obj.position;
-    // float rot = obj.rotation;
+    
+    float hypo = sqrt(pow(position.x, 2) + pow(position.y, 2));
+    vec2 rotatedpos = vec2(
+        cos(
+            atan(position.y, position.x) + player.rotation
+        ) * hypo,
+        sin(
+            atan(position.y, position.x) + player.rotation
+        ) * hypo
+    );
 
-    gl_Position = vec4(position * player.size, 0.0, 1.0);
     vertex_color = colors[gl_VertexIndex];
     obj1 = 0;
     if (colors.length() <= gl_VertexIndex){
         obj1 = 1;
+        gl_Position = vec4(rotatedpos * player.size + player.position, 0.0, 1.0);
+    }
+    else {
+        gl_Position = vec4(position, 0.0, 1.0);
     }
 }

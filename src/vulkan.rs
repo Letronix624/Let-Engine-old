@@ -2,12 +2,12 @@ extern crate image;
 extern crate vulkano;
 use crate::consts::*;
 use super::data::*;
+use crate::game::Object;
 use image::DynamicImage;
+use vulkano::buffer::cpu_pool::CpuBufferPoolSubbuffer;
 use vulkano::image::{ImmutableImage, ImageDimensions, MipmapsCount};
 use vulkano::pipeline::graphics::color_blend::ColorBlendState;
-use vulkano::pipeline::graphics::input_assembly::PrimitiveTopology;
 use vulkano::sampler::{Sampler, SamplerCreateInfo, Filter, SamplerAddressMode};
-use std::fs;
 use std::io::Cursor;
 use std::{io::Write, sync::Arc, time::*};
 use vulkano::buffer::{CpuBufferPool, CpuAccessibleBuffer, BufferUsage};
@@ -81,13 +81,18 @@ pub struct App {
     viewport: Viewport,
     framebuffers: Vec<Arc<Framebuffer>>,
     pub recreate_swapchain: bool,
-    tex_descriptors: Vec<Arc<PersistentDescriptorSet>>,
+    tex_descriptor: Arc<PersistentDescriptorSet>,
+    obj_descriptor: Arc<PersistentDescriptorSet>,
     previous_frame_end: Option<Box<dyn GpuFuture>>,
     pub vertices: Vec<Vertex>,
     vertex_buffer: CpuBufferPool<Vertex>,
+    obj_buffer: CpuBufferPool<ObjectData>,
+    obj_subbuffer: Arc<CpuBufferPoolSubbuffer<ObjectData>>,
     pub dt1: f64,
     memoryallocator: Arc<StandardMemoryAllocator>,
     commandbufferallocator: StandardCommandBufferAllocator,
+    pub player: Object,
+    descriptor_set_allocator: StandardDescriptorSetAllocator,
 }
 
 impl App {
@@ -172,34 +177,50 @@ impl App {
         let subpass = Subpass::from(render_pass.clone(), 0).unwrap();
         let pipeline: Arc<GraphicsPipeline> = Self::create_pipeline(&device, &vs, &fs, subpass);
 
-        let numberone = CpuAccessibleBuffer::from_data(
-            &memoryallocator,
-            BufferUsage {
-                storage_buffer: true,
-                ..BufferUsage::empty()
-            },
-            false,
-            Object {
+        let obj_buffer: CpuBufferPool<ObjectData> = CpuBufferPool::uniform_buffer(memoryallocator.clone());
+
+
+        let obj_subbuffer = obj_buffer.from_data(
+            ObjectData {
                 position: [0.0, 0.0],
-                size: [1.0, 1.7],
+                size: [1.0, 1.0],
                 rotation: 0.0
             }
         )
         .unwrap();
         
-        let mut tex_descriptors = vec![];
-        let layout = pipeline.layout().set_layouts().get(0).unwrap();
-        tex_descriptors.push( //funny cat picture
-            PersistentDescriptorSet::new(
-                &descriptor_set_allocator,
-                layout.clone(),
-                [
-                        WriteDescriptorSet::image_view_sampler(0, texture, sampler),
-                        WriteDescriptorSet::buffer(1, numberone)
-                    ],
-            )
-            .unwrap()
-        );        
+        //CpuAccessibleBuffer::from_data(
+        //     &memoryallocator,
+        //     BufferUsage {
+        //         uniform_buffer: true,
+        //         ..BufferUsage::empty()
+        //     },
+        //     false,
+        //     Object {
+        //         position: [0.0, 0.0],
+        //         size: [1.0, 1.7],
+        //         rotation: 0.0
+        //     }
+        // )
+        // .unwrap();
+        
+        let tex_descriptor = PersistentDescriptorSet::new(
+            &descriptor_set_allocator,
+            pipeline.layout().set_layouts().get(0).unwrap().clone(),
+            [
+                    WriteDescriptorSet::image_view_sampler(0, texture.clone(), sampler.clone())
+                ],
+        )
+        .unwrap();
+
+        let obj_descriptor = PersistentDescriptorSet::new(
+            &descriptor_set_allocator,
+            pipeline.layout().set_layouts().get(1).unwrap().clone(),
+            [
+                WriteDescriptorSet::buffer(0, obj_subbuffer.clone())
+            ]
+        )
+        .unwrap();
 
         let mut viewport = Viewport {
             origin: [0.0, 0.0],
@@ -248,13 +269,18 @@ impl App {
                 viewport,
                 framebuffers,
                 recreate_swapchain,
-                tex_descriptors,
+                tex_descriptor,
+                obj_descriptor,
                 previous_frame_end,
                 vertices,
                 memoryallocator,
                 commandbufferallocator,
                 vertex_buffer,
+                obj_buffer,
+                obj_subbuffer,
                 dt1,
+                player: Object { position: [0.0, 0.0], size: [0.0, 0.0], rotation: 0.0, data: vec![] },
+                descriptor_set_allocator,
             },
             event_loop,
         )
@@ -608,8 +634,23 @@ impl App {
         self.dt1 = unix_timestamp();
 
         let sub_buffer = self.vertex_buffer.from_iter(self.vertices.clone()).unwrap();
+        self.obj_subbuffer = self.obj_buffer.from_data(
+            ObjectData {
+                position: self.player.position,
+                size: self.player.size,
+                rotation: self.player.rotation
+            }
+        )
+        .unwrap();
         
-
+        self.obj_descriptor = PersistentDescriptorSet::new(
+            &self.descriptor_set_allocator,
+            self.pipeline.layout().set_layouts().get(1).unwrap().clone(),
+            [
+                    WriteDescriptorSet::buffer(0, self.obj_subbuffer.clone())
+                ],
+        )
+        .unwrap();
 
         let dimensions = window.inner_size();
         if dimensions.width == 0 || dimensions.height == 0 {
@@ -669,7 +710,10 @@ impl App {
                 vulkano::pipeline::PipelineBindPoint::Graphics,
                 self.pipeline.layout().clone(),
                 0,
-                self.tex_descriptors.clone(),
+                vec![
+                    self.tex_descriptor.clone(),
+                    self.obj_descriptor.clone()
+                ],
             )
             .bind_vertex_buffers(0, sub_buffer.clone())
             .draw(self.vertices.len() as u32, 1, 0, 0)

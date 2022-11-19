@@ -12,7 +12,7 @@ pub struct Vertex {
 
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, Zeroable, Pod)]
-pub struct Object {
+pub struct ObjectData {
     pub position: [f32; 2],
     pub size: [f32; 2],
     pub rotation: f32, //In radians
