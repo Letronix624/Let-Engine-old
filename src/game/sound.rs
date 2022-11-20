@@ -1,23 +1,5 @@
-use rodio::{
-    OutputStream,
-    Decoder
-};
-use std::{
-    thread,
-    thread::{
-        sleep
-    },
-    time::{
-        Duration
-    },
-    collections::{
-        HashMap
-    },
-    io::{
-        Cursor,
-        Read
-    }
-};
+use rodio::{Decoder, OutputStream};
+use std::{io::Cursor, thread};
 
 pub fn memeloop() {
     thread::spawn(|| {
@@ -27,32 +9,18 @@ pub fn memeloop() {
 
         let sound = include_bytes!("../../assets/sounds/omaga.mp3");
 
-
-        bsink.append(
-            Decoder::new_mp3(Cursor::new(
-                    sound
-                )
-            ).unwrap()
-        );
+        bsink.append(Decoder::new_mp3(Cursor::new(sound)).unwrap());
         bsink.sleep_until_end();
-        
     });
     thread::spawn(|| {
         let (_stream, soundhandle) = OutputStream::try_default().unwrap();
         let bsink = rodio::Sink::try_new(&soundhandle).unwrap();
         bsink.set_volume(0.4);
         let sound = include_bytes!("../../assets/sounds/boom.mp3");
-        for _ in 0..4 {
-            bsink.append(
-        Decoder::new_mp3(Cursor::new(
-                    sound
-                )
-                ).unwrap()
-            );
+        for _ in 0..3 {
+            bsink.append(Decoder::new_mp3(Cursor::new(sound)).unwrap());
         }
-        
-        bsink.sleep_until_end();
-        
 
+        bsink.sleep_until_end();
     });
 }

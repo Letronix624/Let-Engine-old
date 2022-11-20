@@ -8,6 +8,12 @@ pub struct Vertex {
     pub position: [f32; 2],
 }
 
+#[repr(C)]
+#[derive(Clone, Copy, Debug, Default, Zeroable, Pod)]
+pub struct VertexColor {
+    pub color: [f32; 4],
+}
+
 //struct object with position, size, rotation.
 
 #[repr(C)]
@@ -15,6 +21,7 @@ pub struct Vertex {
 pub struct ObjectData {
     pub position: [f32; 2],
     pub size: [f32; 2],
+    pub index: u32,
     pub rotation: f32, //In radians
 }
 

@@ -52,6 +52,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "approx"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3f2a05fd1bd10b2527e20a2cd32d8873d115b8b39fe219ee25f42a8aca6ba278"
+dependencies = [
+ "num-traits",
+]
+
+[[package]]
 name = "arrayref"
 version = "0.3.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -202,6 +211,16 @@ name = "cfg-if"
 version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
+
+[[package]]
+name = "cgmath"
+version = "0.18.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1a98d30140e3296250832bbaaff83b27dcd6fa3cc70fb6f1f3e5c9c0023b5317"
+dependencies = [
+ "approx",
+ "num-traits",
+]
 
 [[package]]
 name = "clang-sys"
@@ -870,6 +889,7 @@ name = "let_engine"
 version = "0.0.1"
 dependencies = [
  "bytemuck",
+ "cgmath",
  "image",
  "lazy_static",
  "local-ip-address",
@@ -877,7 +897,7 @@ dependencies = [
  "rand",
  "rodio",
  "vk-sys",
- "vulkano 0.32.0",
+ "vulkano 0.32.1",
  "vulkano-shaders",
  "vulkano-win",
  "winit",
@@ -1997,9 +2017,9 @@ dependencies = [
 
 [[package]]
 name = "vulkano"
-version = "0.32.0"
+version = "0.32.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ddab3045fe32d52809a7cec156aecc6f285c8a5d292c78e782d40613b1406cef"
+checksum = "eecedd057ea4cd85c0e43ba2ad30e599954bd958c50d0f7849439548cfa573ce"
 dependencies = [
  "ahash",
  "ash",
@@ -2046,7 +2066,7 @@ dependencies = [
  "core-graphics-types",
  "objc",
  "raw-window-handle 0.5.0",
- "vulkano 0.32.0",
+ "vulkano 0.32.1",
  "winit",
 ]
 

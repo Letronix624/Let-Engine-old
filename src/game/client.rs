@@ -48,16 +48,10 @@ impl Client {
             connected: false,
         }
     }
-    pub fn connect(&mut self) {
-        let mut tcpserver: TcpStream =
-            match TcpStream::connect(format!("{}:{}", self.ip, self.port)) {
-                Ok(t) => t,
-                Err(_) => return (),
-            };
-        let mut udpserver: UdpSocket = match UdpSocket::bind(tcpserver.local_addr().unwrap()) {
-            Ok(t) => t,
-            Err(_) => return (),
-        };
+    pub fn connect(&mut self) -> Result<()>{
+        let mut tcpserver: TcpStream = TcpStream::connect(format!("{}:{}", self.ip, self.port))?;
+ 
+        let mut udpserver: UdpSocket = UdpSocket::bind(tcpserver.local_addr().unwrap())?;
 
         {
             let mut udp = UDPSERVER.lock().unwrap();
@@ -70,10 +64,7 @@ impl Client {
             tcpserver = tcp.as_ref().unwrap().try_clone().unwrap();
         }
 
-        match udpserver.connect(format!("{}:{}", self.ip, self.port)) {
-            Ok(_) => (),
-            Err(_) => return (),
-        }
+        udpserver.connect(format!("{}:{}", self.ip, self.port))?;
 
         let tcpserver2 = tcpserver.try_clone().unwrap();
         let mut tcpserver3 = tcpserver.try_clone().unwrap();
@@ -82,11 +73,7 @@ impl Client {
         tcpserver3.read(&mut buf).unwrap();
         if buf.starts_with(&[0]) {
             // Server could be full or get a wrong password. in case of that you get kicked and getting kicked returns empty buffers.
-            println!(
-                "Failed to connect to {}. Server refused to add you to the server.",
-                self.ip
-            );
-            return ();
+            return Err(std::io::Error::new(std::io::ErrorKind::ConnectionRefused, format!("Failed to connect to {}. Server refused to add you to the server.",self.ip)));
         }
         self.connected = true;
         println!("Connected to {}!", self.ip);
@@ -113,6 +100,7 @@ impl Client {
             udpreceiver.join().unwrap();
             println!("Disconnected from server.")
         });
+        Ok(())
     }
     #[allow(dead_code)]
     fn chat(msg: &str) -> Result<()> {

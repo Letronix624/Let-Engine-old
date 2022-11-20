@@ -1,10 +1,10 @@
 //#![windows_subsystem = "windows"]
 
+mod consts;
 mod data;
 mod game;
 mod server;
 mod vulkan;
-mod consts;
 
 extern crate image;
 extern crate vulkano;
@@ -22,7 +22,6 @@ use winit::{
     event_loop::ControlFlow,
     window::Window,
 };
-
 
 lazy_static::lazy_static! {
     static ref GAME: Mutex<Game> = Mutex::new(Game::init());
@@ -45,7 +44,6 @@ fn fps() -> u16 {
 }
 
 fn main() {
-    std::thread::sleep(std::time::Duration::from_secs(2));
     let args: Vec<String> = std::env::args().collect();
     let server_mode = args.contains(&"--server".to_string());
     if server_mode {
@@ -109,6 +107,7 @@ fn client() {
         }
     });
     let (mut app, event_loop) = vulkan::App::initialize();
+    let mut dt = unix_timestamp();
     event_loop.run(move |event, _, control_flow| {
         *control_flow = ControlFlow::Poll;
         match event {
@@ -212,32 +211,28 @@ fn client() {
                 )
             }
             Event::MainEventsCleared => {
-                //game stuff
+                //game stuff early update
                 unsafe {
-                    DELTA_TIME = unix_timestamp() - app.dt1;
+                    DELTA_TIME = unix_timestamp() - dt;
+                    dt = unix_timestamp();
                     FPS = (1.0 / DELTA_TIME) as u16;
                 }
-                
+
                 let objects: HashMap<String, Object>;
                 objects = GAME.lock().unwrap().objects.clone();
 
                 app.vertices = vec![];
                 app.player = objects.get("player1").unwrap().clone();
 
-                for i in 
-                    GAME
+                for i in GAME
                     .lock()
                     .unwrap()
                     .renderorder
                     .iter()
-                    .map(|x|{
-                            objects.get(x).unwrap()
-                        }
-                    ){
+                    .map(|x| objects.get(x).unwrap())
+                {
                     app.vertices.append(&mut i.data.clone());
-                };
-                
-
+                }
 
                 // for obj in GAME
                 //     .lock()
@@ -269,6 +264,7 @@ fn client() {
             }
             Event::RedrawEventsCleared => {
                 app.redrawevent();
+                GAME.lock().unwrap().late_main();
             }
             _ => (),
         }

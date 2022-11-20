@@ -1,16 +1,14 @@
 extern crate image;
 extern crate vulkano;
-use crate::consts::*;
 use super::data::*;
+use crate::consts::*;
 use crate::game::Object;
+use cgmath::{};
 use image::DynamicImage;
-use vulkano::buffer::cpu_pool::CpuBufferPoolSubbuffer;
-use vulkano::image::{ImmutableImage, ImageDimensions, MipmapsCount};
-use vulkano::pipeline::graphics::color_blend::ColorBlendState;
-use vulkano::sampler::{Sampler, SamplerCreateInfo, Filter, SamplerAddressMode};
 use std::io::Cursor;
-use std::{io::Write, sync::Arc, time::*};
-use vulkano::buffer::{CpuBufferPool, CpuAccessibleBuffer, BufferUsage};
+use std::sync::Arc;
+use vulkano::buffer::cpu_pool::CpuBufferPoolSubbuffer;
+use vulkano::buffer::CpuBufferPool;
 use vulkano::command_buffer::{
     allocator::StandardCommandBufferAllocator, AutoCommandBufferBuilder, CommandBufferUsage,
     PrimaryCommandBufferAbstract, RenderPassBeginInfo, SubpassContents,
@@ -23,8 +21,10 @@ use vulkano::device::{
 };
 use vulkano::device::{Device, Queue};
 use vulkano::image::{view::ImageView, ImageAccess, ImageUsage, SwapchainImage};
+use vulkano::image::{ImageDimensions, ImmutableImage, MipmapsCount};
 use vulkano::instance::{debug::*, Instance, InstanceCreateInfo, InstanceExtensions};
 use vulkano::memory::allocator::StandardMemoryAllocator;
+use vulkano::pipeline::graphics::color_blend::ColorBlendState;
 use vulkano::pipeline::graphics::{
     input_assembly::InputAssemblyState, vertex_input::BuffersDefinition, viewport::Viewport,
     viewport::ViewportState,
@@ -32,6 +32,7 @@ use vulkano::pipeline::graphics::{
 use vulkano::pipeline::{GraphicsPipeline, Pipeline};
 use vulkano::render_pass::RenderPass;
 use vulkano::render_pass::{Framebuffer, FramebufferCreateInfo, Subpass};
+use vulkano::sampler::{Filter, Sampler, SamplerAddressMode, SamplerCreateInfo};
 use vulkano::shader::ShaderModule;
 use vulkano::swapchain::{
     acquire_next_image, AcquireError, PresentMode, Surface, Swapchain, SwapchainCreateInfo,
@@ -60,8 +61,6 @@ mod fragmentshader {
     }
 }
 
-
-
 #[allow(unused)]
 pub struct App {
     instance: Arc<Instance>,
@@ -88,7 +87,6 @@ pub struct App {
     vertex_buffer: CpuBufferPool<Vertex>,
     obj_buffer: CpuBufferPool<ObjectData>,
     obj_subbuffer: Arc<CpuBufferPoolSubbuffer<ObjectData>>,
-    pub dt1: f64,
     memoryallocator: Arc<StandardMemoryAllocator>,
     commandbufferallocator: StandardCommandBufferAllocator,
     pub player: Object,
@@ -109,10 +107,11 @@ impl App {
             queue_family_index,
         );
         let (swapchain, images) = Self::create_swapchain_and_images(&device, &surface);
-        
+
         let memoryallocator = Arc::new(StandardMemoryAllocator::new_default(device.clone()));
 
-        let vertex_buffer: CpuBufferPool<Vertex> = CpuBufferPool::vertex_buffer(memoryallocator.clone().into());
+        let vertex_buffer: CpuBufferPool<Vertex> =
+            CpuBufferPool::vertex_buffer(memoryallocator.clone().into());
 
         let vs = vertexshader::load(device.clone()).unwrap();
         let fs = fragmentshader::load(device.clone()).unwrap();
@@ -134,7 +133,6 @@ impl App {
         )
         .unwrap();
 
-
         let texture = {
             let png_bytes = include_bytes!("../assets/textures/shidkitty69.png").to_vec();
             let cursor = Cursor::new(png_bytes);
@@ -149,7 +147,7 @@ impl App {
             let mut image_data = Vec::new();
             image_data.resize((info.width * info.height * 4) as usize, 0);
             reader.next_frame(&mut image_data).unwrap();
-    
+
             let image = ImmutableImage::from_iter(
                 &memoryallocator,
                 image_data,
@@ -162,13 +160,16 @@ impl App {
             ImageView::new_default(image).unwrap()
         };
 
-        
         let sampler = Sampler::new(
             device.clone(),
             SamplerCreateInfo {
                 mag_filter: Filter::Nearest,
                 min_filter: Filter::Linear,
-                address_mode: [SamplerAddressMode::ClampToBorder, SamplerAddressMode::ClampToBorder, SamplerAddressMode::Repeat],
+                address_mode: [
+                    SamplerAddressMode::ClampToBorder,
+                    SamplerAddressMode::ClampToBorder,
+                    SamplerAddressMode::Repeat,
+                ],
                 ..Default::default()
             },
         )
@@ -177,18 +178,18 @@ impl App {
         let subpass = Subpass::from(render_pass.clone(), 0).unwrap();
         let pipeline: Arc<GraphicsPipeline> = Self::create_pipeline(&device, &vs, &fs, subpass);
 
-        let obj_buffer: CpuBufferPool<ObjectData> = CpuBufferPool::uniform_buffer(memoryallocator.clone());
+        let obj_buffer: CpuBufferPool<ObjectData> =
+            CpuBufferPool::uniform_buffer(memoryallocator.clone());
 
-
-        let obj_subbuffer = obj_buffer.from_data(
-            ObjectData {
+        let obj_subbuffer = obj_buffer
+            .from_data(ObjectData {
                 position: [0.0, 0.0],
                 size: [1.0, 1.0],
-                rotation: 0.0
-            }
-        )
-        .unwrap();
-        
+                index: 1,
+                rotation: 0.0,
+            })
+            .unwrap();
+
         //CpuAccessibleBuffer::from_data(
         //     &memoryallocator,
         //     BufferUsage {
@@ -203,22 +204,22 @@ impl App {
         //     }
         // )
         // .unwrap();
-        
+
         let tex_descriptor = PersistentDescriptorSet::new(
             &descriptor_set_allocator,
             pipeline.layout().set_layouts().get(0).unwrap().clone(),
-            [
-                    WriteDescriptorSet::image_view_sampler(0, texture.clone(), sampler.clone())
-                ],
+            [WriteDescriptorSet::image_view_sampler(
+                0,
+                texture.clone(),
+                sampler.clone(),
+            )],
         )
         .unwrap();
 
         let obj_descriptor = PersistentDescriptorSet::new(
             &descriptor_set_allocator,
             pipeline.layout().set_layouts().get(1).unwrap().clone(),
-            [
-                WriteDescriptorSet::buffer(0, obj_subbuffer.clone())
-            ]
+            [WriteDescriptorSet::buffer(0, obj_subbuffer.clone())],
         )
         .unwrap();
 
@@ -229,8 +230,6 @@ impl App {
         };
         let framebuffers =
             Self::window_size_dependent_setup(&images, render_pass.clone(), &mut viewport);
-
-        
 
         let recreate_swapchain = false;
 
@@ -244,12 +243,12 @@ impl App {
         );
 
         let vertices = vec![];
-        let dt1 = unix_timestamp();
         surface
             .object()
             .unwrap()
             .downcast_ref::<Window>()
-            .unwrap().set_visible(true);
+            .unwrap()
+            .set_visible(true);
         (
             Self {
                 instance,
@@ -278,8 +277,12 @@ impl App {
                 vertex_buffer,
                 obj_buffer,
                 obj_subbuffer,
-                dt1,
-                player: Object { position: [0.0, 0.0], size: [0.0, 0.0], rotation: 0.0, data: vec![] },
+                player: Object {
+                    position: [0.0, 0.0],
+                    size: [0.0, 0.0],
+                    rotation: 0.0,
+                    data: vec![],
+                },
                 descriptor_set_allocator,
             },
             event_loop,
@@ -303,8 +306,8 @@ impl App {
         let layers: Vec<String> = vec![];
         #[cfg(debug_assertions)]
         let layers = vec![
-                "VK_LAYER_KHRONOS_validation".to_owned(),
-                "VK_LAYER_VALVE_steam_overlay_64".to_owned(),
+            "VK_LAYER_KHRONOS_validation".to_owned(),
+            "VK_LAYER_VALVE_steam_overlay_64".to_owned(),
         ];
 
         let gameinfo = InstanceCreateInfo {
@@ -625,30 +628,31 @@ impl App {
         }
     }
     pub fn redrawevent(&mut self) {
+        //windowevents
         let window = self
             .surface
             .object()
             .unwrap()
             .downcast_ref::<Window>()
             .unwrap();
-        self.dt1 = unix_timestamp();
+        //deltatime timer start
 
-        let sub_buffer = self.vertex_buffer.from_iter(self.vertices.clone()).unwrap();
-        self.obj_subbuffer = self.obj_buffer.from_data(
-            ObjectData {
+        //buffer updates
+        let vertex_sub_buffer = self.vertex_buffer.from_iter(self.vertices.clone()).unwrap();
+        self.obj_subbuffer = self
+            .obj_buffer
+            .from_data(ObjectData {
                 position: self.player.position,
                 size: self.player.size,
-                rotation: self.player.rotation
-            }
-        )
-        .unwrap();
-        
+                index: 1,
+                rotation: self.player.rotation,
+            })
+            .unwrap();
+
         self.obj_descriptor = PersistentDescriptorSet::new(
             &self.descriptor_set_allocator,
             self.pipeline.layout().set_layouts().get(1).unwrap().clone(),
-            [
-                    WriteDescriptorSet::buffer(0, self.obj_subbuffer.clone())
-                ],
+            [WriteDescriptorSet::buffer(0, self.obj_subbuffer.clone())],
         )
         .unwrap();
 
@@ -687,6 +691,9 @@ impl App {
         if suboptimal {
             self.recreate_swapchain = true;
         }
+
+
+
         let mut builder = AutoCommandBufferBuilder::primary(
             &self.commandbufferallocator,
             self.queue.queue_family_index(),
@@ -710,12 +717,9 @@ impl App {
                 vulkano::pipeline::PipelineBindPoint::Graphics,
                 self.pipeline.layout().clone(),
                 0,
-                vec![
-                    self.tex_descriptor.clone(),
-                    self.obj_descriptor.clone()
-                ],
+                vec![self.tex_descriptor.clone(), self.obj_descriptor.clone()],
             )
-            .bind_vertex_buffers(0, sub_buffer.clone())
+            .bind_vertex_buffers(0, vertex_sub_buffer.clone())
             .draw(self.vertices.len() as u32, 1, 0, 0)
             .unwrap()
             .end_render_pass()
@@ -735,6 +739,8 @@ impl App {
             )
             .then_signal_fence_and_flush();
 
+
+
         match future {
             Ok(future) => {
                 self.previous_frame_end = Some(future.boxed());
@@ -749,11 +755,4 @@ impl App {
             }
         }
     }
-}
-
-fn unix_timestamp() -> f64 {
-    return SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .unwrap()
-        .as_secs_f64();
 }

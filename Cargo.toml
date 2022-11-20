@@ -6,7 +6,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-vulkano = "0.32.0"
+vulkano = "0.32.1"
 vulkano-win = "0.32.0"
 vulkano-shaders = "0.31.1"
 bytemuck = "1.8.0"
@@ -18,3 +18,4 @@ local-ip-address = "0.4.9"
 lazy_static = "1.4.0"
 rodio = "0.16.0"
 png = "0.17.7"
+cgmath = "0.18.0"

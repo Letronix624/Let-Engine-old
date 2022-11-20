@@ -9,7 +9,6 @@ use super::{delta_time, fps, BACKGROUND, SQUARE};
 
 use client::{get_ping, Client};
 
-
 #[derive(Clone, Copy)]
 pub struct InputState {
     pub w: bool,
@@ -130,16 +129,17 @@ impl Game {
         );
         self.newobject(
             "player1".to_string(),
-            data::make_circle(10),
+            data::make_circle(50),
             [0.0, 0.0],
             [0.3, 0.3],
             0.0,
         );
-        self.client.connect();
+
+        //let _ = self.client.connect(); //Connects to the server (seflon.ddns.net) if its available
 
         println!("{:?}", self.renderorder);
 
-        sound::memeloop();
+        //sound::memeloop();
     }
     pub fn main(&mut self) {
         //Runs every single frame once.
@@ -163,7 +163,7 @@ impl Game {
                 * 2.0
         });
 
-        if player.data.len() < 4 && self.input.vsd == -1.0 {
+        if player.data.len() <= 9 && self.input.vsd == -1.0 {
             self.input.vsd = 0.0;
         }
         player.data = data::make_circle(
@@ -174,32 +174,39 @@ impl Game {
         self.setobject("player1".to_string(), player);
     }
 
+    pub fn late_main(&mut self) {
+        //Runs every time after the redraw events are done.
+        
+    }
+
     pub fn tick(&mut self) {
         //Runs 62.4 times per second.
-        if self.client.connected {
-            let player = self.getobject("player1".to_string());
-            if self.olddata.position != player.position || self.olddata.size != player.size {
-                match self.client.sendobject(player) {
-                    _ => (),
-                };
-                self.olddata = self.getobject("player1".to_string());
-            }
-            {
-                let objects = client::GAMEOBJECTS.lock().unwrap();
-                for object in objects.iter() {
-                    if self.objects.contains_key(object.0) {
-                        self.setobject(object.0.clone(), object.1.clone());
-                    } else {
-                        self.newobject(
-                            object.0.clone(),
-                            object.1.clone().data,
-                            object.1.position,
-                            object.1.position,
-                            0.0,
-                        )
-                    }
-                }
-            }
-        }
+
+        // if self.client.connected { 
+        //     //Client data sender
+        //     let player = self.getobject("player1".to_string());
+        //     if self.olddata.position != player.position || self.olddata.size != player.size {
+        //         match self.client.sendobject(player) {
+        //             _ => (),
+        //         };
+        //         self.olddata = self.getobject("player1".to_string());
+        //     }
+        //     {
+        //         let objects = client::GAMEOBJECTS.lock().unwrap();
+        //         for object in objects.iter() {
+        //             if self.objects.contains_key(object.0) {
+        //                 self.setobject(object.0.clone(), object.1.clone());
+        //             } else {
+        //                 self.newobject(
+        //                     object.0.clone(),
+        //                     object.1.clone().data,
+        //                     object.1.position,
+        //                     object.1.position,
+        //                     0.0,
+        //                 )
+        //             }
+        //         }
+        //     }
+        // }
     }
 }
