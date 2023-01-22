@@ -1,11 +1,12 @@
 mod client;
 mod sound;
+mod discord;
 
 use std::collections::HashMap;
 
 use crate::data::{self};
 
-use super::{delta_time, fps, BACKGROUND, SQUARE};
+use super::{delta_time, fps, window, BACKGROUND, SQUARE};
 
 use client::{get_ping, Client};
 
@@ -139,12 +140,14 @@ impl Game {
 
         println!("{:?}", self.renderorder);
 
+        discord::start();
+
         //sound::memeloop();
     }
     pub fn main(&mut self) {
         //Runs every single frame once.
 
-        println!("FPS:{} Ping:{}", fps(), get_ping());
+        //println!("FPS:{} Ping:{}", fps(), get_ping());
 
         let mut player = self.getobject("player1".to_string());
         player.position = [
@@ -172,6 +175,7 @@ impl Game {
         self.input.vsd = 0.0;
 
         self.setobject("player1".to_string(), player);
+
     }
 
     pub fn late_main(&mut self) {

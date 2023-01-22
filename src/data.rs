@@ -16,15 +16,6 @@ pub struct VertexColor {
 
 //struct object with position, size, rotation.
 
-#[repr(C)]
-#[derive(Clone, Copy, Debug, Default, Zeroable, Pod)]
-pub struct ObjectData {
-    pub position: [f32; 2],
-    pub size: [f32; 2],
-    pub index: u32,
-    pub rotation: f32, //In radians
-}
-
 impl_vertex!(Vertex, position);
 
 #[allow(dead_code)]

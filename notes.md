@@ -20,15 +20,21 @@ rot = sizey
 
 new idea
 
-ObjectDataids{
-	Int ID[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1]
-}
-ObjectDataPositions{
+
+idea 1.
+vertex buffer position vec2
+vertex buffer object index uint[]
+
+storage buffer {
 	vec2 position[]
-}
-ObjectDataSizes{
 	vec2 size[]
-}
-ObjectDataRotations{
-	vec2 rotation[]
-}
+	float rotation[]
+	vec4 color[]
+} object
+
+idea 2.
+vertex buffer position vec2
+vertex buffer object position vec2
+vertex buffer object size vec2
+vertex buffer object rotation float
+vertex buffer object color vec4

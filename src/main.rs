@@ -11,6 +11,7 @@ extern crate vulkano;
 use data::*;
 use game::{Game, Object};
 use server::Server;
+use winit::dpi::PhysicalSize;
 use std::collections::HashMap;
 use std::net::TcpListener;
 use std::sync::{Arc, Mutex};
@@ -29,6 +30,7 @@ lazy_static::lazy_static! {
 
 static mut FPS: u16 = 0;
 static mut DELTA_TIME: f64 = 0.0;
+static mut WINDOW: PhysicalSize<u32> = PhysicalSize::new(600, 600);
 
 #[allow(dead_code)]
 fn delta_time() -> f64 {
@@ -40,6 +42,12 @@ fn delta_time() -> f64 {
 fn fps() -> u16 {
     unsafe {
         return FPS;
+    }
+}
+#[allow(dead_code)]
+fn window() -> PhysicalSize<u32> {
+    unsafe {
+        return WINDOW;
     }
 }
 
@@ -102,7 +110,6 @@ fn client() {
                 let mut game = GAME.lock().unwrap();
                 game.tick();
             }
-            //thread::sleep(Duration::from_secs(1));
             thread::sleep(Duration::from_nanos(16025641));
         }
     });
@@ -198,42 +205,45 @@ fn client() {
                 event: WindowEvent::CursorMoved { position, .. },
                 ..
             } => {
-                let dim = app
-                    .surface
-                    .object()
-                    .unwrap()
-                    .downcast_ref::<Window>()
-                    .unwrap()
-                    .inner_size();
-                GAME.lock().unwrap().input.mouse = (
-                    (position.x as f32 / dim.width as f32) * 2.0 - 1.0,
-                    (position.y as f32 / dim.height as f32) * 2.0 - 1.0,
-                )
+                unsafe {
+                    GAME.lock().unwrap().input.mouse = (
+                        (position.x as f32 / WINDOW.width as f32) * 2.0 - 1.0,
+                        (position.y as f32 / WINDOW.height as f32) * 2.0 - 1.0,
+                    )
+                }
             }
             Event::MainEventsCleared => {
                 //game stuff early update
+                {
+                    unsafe{
+                        WINDOW = app
+                            .surface
+                            .object()
+                            .unwrap()
+                            .downcast_ref::<Window>()
+                            .unwrap()
+                            .inner_size();
+                    }
+                    
+                }
+                
+
                 unsafe {
                     DELTA_TIME = unix_timestamp() - dt;
                     dt = unix_timestamp();
                     FPS = (1.0 / DELTA_TIME) as u16;
                 }
-
-                let objects: HashMap<String, Object>;
-                objects = GAME.lock().unwrap().objects.clone();
-
-                app.vertices = vec![];
-                app.player = objects.get("player1").unwrap().clone();
-
-                for i in GAME
-                    .lock()
-                    .unwrap()
-                    .renderorder
-                    .iter()
-                    .map(|x| objects.get(x).unwrap())
+                
                 {
-                    app.vertices.append(&mut i.data.clone());
+                    let mut game = GAME.lock().unwrap();
+                    app.render_order = game.renderorder.to_vec();
+                    app.objects = game.objects.clone();
+                    game.main();
                 }
+                
+                
 
+                // app.vertices = vec![];
                 // for obj in GAME
                 //     .lock()
                 //     .unwrap()
@@ -259,8 +269,6 @@ fn client() {
                 //         });
                 //     }
                 // }
-
-                GAME.lock().unwrap().main();
             }
             Event::RedrawEventsCleared => {
                 app.redrawevent();

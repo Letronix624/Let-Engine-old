@@ -3,12 +3,11 @@ extern crate vulkano;
 use super::data::*;
 use crate::consts::*;
 use crate::game::Object;
-use cgmath::{};
 use image::DynamicImage;
+use std::collections::HashMap;
 use std::io::Cursor;
 use std::sync::Arc;
-use vulkano::buffer::cpu_pool::CpuBufferPoolSubbuffer;
-use vulkano::buffer::CpuBufferPool;
+use vulkano::buffer::{CpuBufferPool, BufferUsage};
 use vulkano::command_buffer::{
     allocator::StandardCommandBufferAllocator, AutoCommandBufferBuilder, CommandBufferUsage,
     PrimaryCommandBufferAbstract, RenderPassBeginInfo, SubpassContents,
@@ -23,7 +22,7 @@ use vulkano::device::{Device, Queue};
 use vulkano::image::{view::ImageView, ImageAccess, ImageUsage, SwapchainImage};
 use vulkano::image::{ImageDimensions, ImmutableImage, MipmapsCount};
 use vulkano::instance::{debug::*, Instance, InstanceCreateInfo, InstanceExtensions};
-use vulkano::memory::allocator::StandardMemoryAllocator;
+use vulkano::memory::allocator::{StandardMemoryAllocator, MemoryUsage};
 use vulkano::pipeline::graphics::color_blend::ColorBlendState;
 use vulkano::pipeline::graphics::{
     input_assembly::InputAssemblyState, vertex_input::BuffersDefinition, viewport::Viewport,
@@ -38,7 +37,7 @@ use vulkano::swapchain::{
     acquire_next_image, AcquireError, PresentMode, Surface, Swapchain, SwapchainCreateInfo,
     SwapchainCreationError, SwapchainPresentInfo,
 };
-use vulkano::sync;
+use vulkano::sync::{self, MemoryBarrier};
 use vulkano::sync::{FlushError, GpuFuture};
 use vulkano::{library::VulkanLibrary, Version};
 use vulkano_win::VkSurfaceBuild;
@@ -50,14 +49,20 @@ use winit::{
 mod vertexshader {
     vulkano_shaders::shader! {
         ty: "vertex",
-        path: "src/vert.glsl"
+        path: "src/shaders/vert.glsl",
+        types_meta: {
+            use bytemuck::{Pod, Zeroable};
+
+            #[derive(Clone, Copy, Zeroable, Pod)]
+        }
     }
+
 }
 
 mod fragmentshader {
     vulkano_shaders::shader! {
         ty: "fragment",
-        path: "src/frag.glsl"
+        path: "src/shaders/frag.glsl"
     }
 }
 
@@ -81,15 +86,12 @@ pub struct App {
     framebuffers: Vec<Arc<Framebuffer>>,
     pub recreate_swapchain: bool,
     tex_descriptor: Arc<PersistentDescriptorSet>,
-    obj_descriptor: Arc<PersistentDescriptorSet>,
     previous_frame_end: Option<Box<dyn GpuFuture>>,
-    pub vertices: Vec<Vertex>,
+    pub objects: HashMap<String, Object>,
+    pub render_order: Vec<String>,
     vertex_buffer: CpuBufferPool<Vertex>,
-    obj_buffer: CpuBufferPool<ObjectData>,
-    obj_subbuffer: Arc<CpuBufferPoolSubbuffer<ObjectData>>,
     memoryallocator: Arc<StandardMemoryAllocator>,
     commandbufferallocator: StandardCommandBufferAllocator,
-    pub player: Object,
     descriptor_set_allocator: StandardDescriptorSetAllocator,
 }
 
@@ -178,17 +180,9 @@ impl App {
         let subpass = Subpass::from(render_pass.clone(), 0).unwrap();
         let pipeline: Arc<GraphicsPipeline> = Self::create_pipeline(&device, &vs, &fs, subpass);
 
-        let obj_buffer: CpuBufferPool<ObjectData> =
-            CpuBufferPool::uniform_buffer(memoryallocator.clone());
 
-        let obj_subbuffer = obj_buffer
-            .from_data(ObjectData {
-                position: [0.0, 0.0],
-                size: [1.0, 1.0],
-                index: 1,
-                rotation: 0.0,
-            })
-            .unwrap();
+        
+        //Use storage buffer for object position. UGAA!
 
         //CpuAccessibleBuffer::from_data(
         //     &memoryallocator,
@@ -216,12 +210,7 @@ impl App {
         )
         .unwrap();
 
-        let obj_descriptor = PersistentDescriptorSet::new(
-            &descriptor_set_allocator,
-            pipeline.layout().set_layouts().get(1).unwrap().clone(),
-            [WriteDescriptorSet::buffer(0, obj_subbuffer.clone())],
-        )
-        .unwrap();
+        
 
         let mut viewport = Viewport {
             origin: [0.0, 0.0],
@@ -242,7 +231,9 @@ impl App {
                 .boxed(),
         );
 
-        let vertices = vec![];
+        let objects = HashMap::new();
+        let render_order = Vec::new();
+
         surface
             .object()
             .unwrap()
@@ -269,20 +260,12 @@ impl App {
                 framebuffers,
                 recreate_swapchain,
                 tex_descriptor,
-                obj_descriptor,
                 previous_frame_end,
-                vertices,
+                objects,
+                render_order,
                 memoryallocator,
                 commandbufferallocator,
                 vertex_buffer,
-                obj_buffer,
-                obj_subbuffer,
-                player: Object {
-                    position: [0.0, 0.0],
-                    size: [0.0, 0.0],
-                    rotation: 0.0,
-                    data: vec![],
-                },
                 descriptor_set_allocator,
             },
             event_loop,
@@ -312,7 +295,7 @@ impl App {
 
         let gameinfo = InstanceCreateInfo {
             enabled_layers: layers,
-            application_name: Some("Let Engine Test".into()),
+            application_name: Some(APPNAME.into()),
             application_version: Version {
                 major: (0),
                 minor: (0),
@@ -584,7 +567,10 @@ impl App {
         subpass: Subpass,
     ) -> Arc<GraphicsPipeline> {
         GraphicsPipeline::start()
-            .vertex_input_state(BuffersDefinition::new().vertex::<Vertex>())
+            .vertex_input_state(
+                BuffersDefinition::new()
+                .vertex::<Vertex>()
+            )
             .input_assembly_state(InputAssemblyState::new())
             .vertex_shader(vs.entry_point("main").unwrap(), ())
             .viewport_state(ViewportState::viewport_dynamic_scissor_irrelevant())
@@ -635,28 +621,56 @@ impl App {
             .unwrap()
             .downcast_ref::<Window>()
             .unwrap();
-        //deltatime timer start
-
-        //buffer updates
-        let vertex_sub_buffer = self.vertex_buffer.from_iter(self.vertices.clone()).unwrap();
-        self.obj_subbuffer = self
-            .obj_buffer
-            .from_data(ObjectData {
-                position: self.player.position,
-                size: self.player.size,
-                index: 1,
-                rotation: self.player.rotation,
-            })
-            .unwrap();
-
-        self.obj_descriptor = PersistentDescriptorSet::new(
-            &self.descriptor_set_allocator,
-            self.pipeline.layout().set_layouts().get(1).unwrap().clone(),
-            [WriteDescriptorSet::buffer(0, self.obj_subbuffer.clone())],
-        )
-        .unwrap();
-
         let dimensions = window.inner_size();
+        //buffer updates
+
+        let mut vertices = Vec::new();
+        for obj in self.render_order
+            .iter()
+            .map(|x| self.objects.get(x).unwrap())
+        {
+            for vertex in obj.data.iter() {
+                vertices.push(*vertex);
+            }
+        }
+
+        let vertex_sub_buffer = self.vertex_buffer.from_iter(vertices.clone()).unwrap();
+
+        let mut object_indeces: Vec<u32> = vec![];
+        
+        for obj in self.objects.values().enumerate() {
+            object_indeces.extend(
+                obj.1.data.iter().map(|_|
+                   obj.0 as u32
+                )
+            );
+        }
+
+        // let objects = vertexshader::ty::objects_storage {
+        //     index: 0u32,
+        //     position: [0.0, 0.0],
+        //     size: [1.0, 1.0],
+        //     rotation: 0.0
+        // };
+        let object1 = self.objects.get("player1").unwrap();
+
+            //make it all objects!
+
+
+        
+        let push_constants = vertexshader::ty::PushConstant {
+            resolution: [dimensions.width as f32, dimensions.height as f32],
+            camera: [0.0, 0.0]
+        };
+
+        //
+
+        
+
+        
+
+
+
         if dimensions.width == 0 || dimensions.height == 0 {
             return;
         }
@@ -710,19 +724,26 @@ impl App {
                 },
                 SubpassContents::Inline,
             )
-            .unwrap()
-            .set_viewport(0, [self.viewport.clone()])
+            .unwrap();
+
+        builder.set_viewport(0, [self.viewport.clone()])
             .bind_pipeline_graphics(self.pipeline.clone())
             .bind_descriptor_sets(
                 vulkano::pipeline::PipelineBindPoint::Graphics,
                 self.pipeline.layout().clone(),
                 0,
-                vec![self.tex_descriptor.clone(), self.obj_descriptor.clone()],
+                self.tex_descriptor.clone(),
             )
-            .bind_vertex_buffers(0, vertex_sub_buffer.clone())
-            .draw(self.vertices.len() as u32, 1, 0, 0)
-            .unwrap()
-            .end_render_pass()
+            .bind_vertex_buffers(
+                0,
+                vertex_sub_buffer.clone(),
+            )
+            .push_constants(self.pipeline.layout().clone(), 0, push_constants)
+            .draw(vertices.len() as u32, 1, 0, 0)
+            .unwrap();
+
+
+        builder.end_render_pass()
             .unwrap();
         let command_buffer = builder.build().unwrap();
 
