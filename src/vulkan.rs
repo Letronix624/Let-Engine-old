@@ -7,7 +7,7 @@ use image::DynamicImage;
 use std::collections::HashMap;
 use std::io::Cursor;
 use std::sync::Arc;
-use vulkano::buffer::{CpuBufferPool, BufferUsage};
+use vulkano::buffer::{CpuBufferPool};
 use vulkano::command_buffer::{
     allocator::StandardCommandBufferAllocator, AutoCommandBufferBuilder, CommandBufferUsage,
     PrimaryCommandBufferAbstract, RenderPassBeginInfo, SubpassContents,
@@ -22,7 +22,7 @@ use vulkano::device::{Device, Queue};
 use vulkano::image::{view::ImageView, ImageAccess, ImageUsage, SwapchainImage};
 use vulkano::image::{ImageDimensions, ImmutableImage, MipmapsCount};
 use vulkano::instance::{debug::*, Instance, InstanceCreateInfo, InstanceExtensions};
-use vulkano::memory::allocator::{StandardMemoryAllocator, MemoryUsage};
+use vulkano::memory::allocator::{StandardMemoryAllocator};
 use vulkano::pipeline::graphics::color_blend::ColorBlendState;
 use vulkano::pipeline::graphics::{
     input_assembly::InputAssemblyState, vertex_input::BuffersDefinition, viewport::Viewport,
@@ -37,7 +37,7 @@ use vulkano::swapchain::{
     acquire_next_image, AcquireError, PresentMode, Surface, Swapchain, SwapchainCreateInfo,
     SwapchainCreationError, SwapchainPresentInfo,
 };
-use vulkano::sync::{self, MemoryBarrier};
+use vulkano::sync::{self};
 use vulkano::sync::{FlushError, GpuFuture};
 use vulkano::{library::VulkanLibrary, Version};
 use vulkano_win::VkSurfaceBuild;
@@ -352,7 +352,6 @@ impl App {
                         } else {
                             panic!("no-impl");
                         };
-                        //////////////////////////////////////
                         if severity != "verbose" {
                             println!(
                                 "{} {} {}: {}",
@@ -569,7 +568,7 @@ impl App {
         GraphicsPipeline::start()
             .vertex_input_state(
                 BuffersDefinition::new()
-                .vertex::<Vertex>()
+                .vertex::<Vertex>(),
             )
             .input_assembly_state(InputAssemblyState::new())
             .vertex_shader(vs.entry_point("main").unwrap(), ())
