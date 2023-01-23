@@ -625,14 +625,38 @@ impl App {
         //buffer updates
 
         let mut vertices = Vec::new();
+        // for obj in self.render_order
+        //     .iter()
+        //     .map(|x| self.objects.get(x).unwrap())
+        // {
+        //     for vertex in obj.data.iter() {
+        //         vertices.push(*vertex);
+        //     }
+        // }
+
         for obj in self.render_order
             .iter()
             .map(|x| self.objects.get(x).unwrap())
         {
             for vertex in obj.data.iter() {
-                vertices.push(*vertex);
+                let hypo = vertex.position[0].hypot(vertex.position[1]);
+                let rotatedpos: [f32; 2] = [
+                    (f32::atan2(vertex.position[1], vertex.position[0]) + obj.rotation)
+                        .cos()
+                        * hypo, // √(2) ÷ 2 × √(2)
+                    (f32::atan2(vertex.position[1], vertex.position[0]) + obj.rotation)
+                        .sin()
+                        * hypo, //  hypo  /// x = cos(cos-1(vx : sqrt(vx^2 + vy^2) + obj.rotation)) * hypo, ;
+                ];
+                vertices.push(Vertex {
+                    position: [
+                        rotatedpos[0] * obj.size[0] + obj.position[0],
+                        rotatedpos[1] * obj.size[1] + obj.position[1],
+                    ],
+                });
             }
         }
+
 
         let vertex_sub_buffer = self.vertex_buffer.from_iter(vertices.clone()).unwrap();
 
@@ -652,7 +676,6 @@ impl App {
         //     size: [1.0, 1.0],
         //     rotation: 0.0
         // };
-        let object1 = self.objects.get("player1").unwrap();
 
             //make it all objects!
 

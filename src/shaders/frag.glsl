@@ -11,7 +11,7 @@ void main() {
 
 
     if (obj1 == 1){
-        f_color = vec4(0.5, 0.75, 1.0, 0.3);//texture;
+        f_color = vec4(0.5, 0.75, 1.0, 1.0);//texture;
     }
     else {
         f_color = vertex_color;

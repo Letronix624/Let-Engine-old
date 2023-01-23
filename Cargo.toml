@@ -20,7 +20,7 @@ publish = false
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-vulkano = "0.32.1"
+vulkano = "0.32.3"
 vulkano-win = "0.32.0"
 vulkano-shaders = "0.31.1"
 bytemuck = "1.8.0"

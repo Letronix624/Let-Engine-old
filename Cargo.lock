@@ -905,7 +905,7 @@ dependencies = [
  "local-ip-address",
  "png",
  "rodio",
- "vulkano 0.32.1",
+ "vulkano 0.32.3",
  "vulkano-shaders",
  "vulkano-win",
  "winit",
@@ -2067,9 +2067,9 @@ dependencies = [
 
 [[package]]
 name = "vulkano"
-version = "0.32.1"
+version = "0.32.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "eecedd057ea4cd85c0e43ba2ad30e599954bd958c50d0f7849439548cfa573ce"
+checksum = "f80b11c6c46ecb2c42155c8bcbc3ff04b783185181d4bbe19d9635a711ec747f"
 dependencies = [
  "ahash",
  "ash",
@@ -2116,7 +2116,7 @@ dependencies = [
  "core-graphics-types",
  "objc",
  "raw-window-handle 0.5.0",
- "vulkano 0.32.1",
+ "vulkano 0.32.3",
  "winit",
 ]
 
