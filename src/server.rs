@@ -106,6 +106,7 @@ impl Server {
                                 ],
                                 rotation: 0.0,
                                 data: super::SQUARE.to_vec(),
+                                indices: super::SQUARE_ID.to_vec(),
                             };
                             {
                                 let mut pd = PLAYERDATA.lock().unwrap();

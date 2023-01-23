@@ -7,7 +7,7 @@ use image::DynamicImage;
 use std::collections::HashMap;
 use std::io::Cursor;
 use std::sync::Arc;
-use vulkano::buffer::{CpuBufferPool};
+use vulkano::buffer::{CpuBufferPool, BufferUsage};
 use vulkano::command_buffer::{
     allocator::StandardCommandBufferAllocator, AutoCommandBufferBuilder, CommandBufferUsage,
     PrimaryCommandBufferAbstract, RenderPassBeginInfo, SubpassContents,
@@ -90,6 +90,7 @@ pub struct App {
     pub objects: HashMap<String, Object>,
     pub render_order: Vec<String>,
     vertex_buffer: CpuBufferPool<Vertex>,
+    index_buffer: CpuBufferPool<u16>,
     memoryallocator: Arc<StandardMemoryAllocator>,
     commandbufferallocator: StandardCommandBufferAllocator,
     descriptor_set_allocator: StandardDescriptorSetAllocator,
@@ -114,6 +115,16 @@ impl App {
 
         let vertex_buffer: CpuBufferPool<Vertex> =
             CpuBufferPool::vertex_buffer(memoryallocator.clone().into());
+
+        let index_buffer: CpuBufferPool<u16> =
+            CpuBufferPool::new(
+                memoryallocator.clone().into(),
+                BufferUsage {
+                    index_buffer: true,
+                    ..Default::default()
+                },
+                vulkano::memory::allocator::MemoryUsage::Upload
+            );
 
         let vs = vertexshader::load(device.clone()).unwrap();
         let fs = fragmentshader::load(device.clone()).unwrap();
@@ -266,6 +277,7 @@ impl App {
                 memoryallocator,
                 commandbufferallocator,
                 vertex_buffer,
+                index_buffer,
                 descriptor_set_allocator,
             },
             event_loop,
@@ -568,7 +580,7 @@ impl App {
         GraphicsPipeline::start()
             .vertex_input_state(
                 BuffersDefinition::new()
-                .vertex::<Vertex>(),
+                .vertex::<Vertex>()
             )
             .input_assembly_state(InputAssemblyState::new())
             .vertex_shader(vs.entry_point("main").unwrap(), ())
@@ -623,7 +635,8 @@ impl App {
         let dimensions = window.inner_size();
         //buffer updates
 
-        let mut vertices = Vec::new();
+        let mut vertices: Vec<Vertex> = Vec::new();
+        let mut indices: Vec<u16> = Vec::new();
         // for obj in self.render_order
         //     .iter()
         //     .map(|x| self.objects.get(x).unwrap())
@@ -654,10 +667,12 @@ impl App {
                     ],
                 });
             }
+            indices.append(&mut obj.indices.clone());
         }
 
 
         let vertex_sub_buffer = self.vertex_buffer.from_iter(vertices.clone()).unwrap();
+        let index_sub_buffer = self.index_buffer.from_iter(indices.clone()).unwrap();
 
         let mut object_indeces: Vec<u32> = vec![];
         
@@ -760,6 +775,7 @@ impl App {
                 0,
                 vertex_sub_buffer.clone(),
             )
+            .bind_index_buffer(index_sub_buffer.clone())
             .push_constants(self.pipeline.layout().clone(), 0, push_constants)
             .draw(vertices.len() as u32, 1, 0, 0)
             .unwrap();

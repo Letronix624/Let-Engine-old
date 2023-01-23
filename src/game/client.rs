@@ -1,3 +1,5 @@
+use crate::data::SQUARE_ID;
+
 use super::SQUARE;
 
 use super::Object;
@@ -161,6 +163,7 @@ impl Client {
                                     ],
                                     rotation: 0.0,
                                     data: SQUARE.to_vec(),
+                                    indices: SQUARE_ID.to_vec(),
                                 };
                                 let objname = str::from_utf8(&buf[17 + c..32 + c]).unwrap();
                                 GAMEOBJECTS.lock().unwrap().insert(objname.to_string(), obj);

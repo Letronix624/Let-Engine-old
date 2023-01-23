@@ -6,7 +6,7 @@ use std::collections::HashMap;
 
 use crate::data::{self};
 
-use super::{delta_time, fps, window, BACKGROUND, SQUARE};
+use super::{delta_time, fps, window, BACKGROUND, SQUARE, BACKGROUND_ID};
 
 use client::{get_ping, Client};
 
@@ -58,6 +58,7 @@ pub struct Object {
     pub size: [f32; 2],
     pub rotation: f32,
     pub data: Vec<super::Vertex>,
+    pub indices: Vec<u16>
 }
 impl Object {
     pub fn empty() -> Self {
@@ -66,6 +67,7 @@ impl Object {
             size: [0.0, 0.0],
             rotation: 0.0,
             data: vec![],
+            indices: vec![]
         }
     }
 }
@@ -104,6 +106,7 @@ impl Game {
         &mut self,
         name: String,
         data: Vec<super::Vertex>,
+        indices: Vec<u16>,
         position: [f32; 2],
         size: [f32; 2],
         rotation: f32,
@@ -115,6 +118,7 @@ impl Game {
                 size,
                 rotation,
                 data,
+                indices
             },
         );
         self.renderorder.push(name);
@@ -124,6 +128,7 @@ impl Game {
         self.newobject(
             "background".to_string(),
             BACKGROUND.to_vec(),
+            BACKGROUND_ID.to_vec(),
             [0.0, 0.0],
             [1.0, 1.0],
             0.0,
@@ -131,6 +136,7 @@ impl Game {
         self.newobject(
             "player1".to_string(),
             data::make_circle(50),
+            data::make_circle_id(50),
             [0.0, 0.0],
             [0.3, 0.3],
             0.0,
