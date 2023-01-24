@@ -1,12 +1,8 @@
 use discord_presence::client::Client;
 use discord_presence::Event;
-use discord_presence::models::rich_presence::Activity;
 use std::thread;
-use std::time::Duration;
 
 use crate::consts::D_PRESENCE;
-
-
 
 pub fn start() {
     thread::spawn(|| {
@@ -20,19 +16,18 @@ pub fn start() {
 
         client.block_until_event(Event::Ready).unwrap();
 
-        client.set_activity(
-                |activity|
-                activity
-                    .state("Test".to_string())
-                    .details("Testing my own game engine.".to_string())
-                    // .assets(
-                    //     |assets|
-                    //     assets.small_image("button_angel".to_string())
-                    // )
-                
-            ).expect("Couldn't start discord RPC.");
-
-        
+        client
+            .set_activity(
+                |activity| {
+                    activity
+                        .state("Test".to_string())
+                        .details("Testing my own game engine.".to_string())
+                }, // .assets(
+                   //     |assets|
+                   //     assets.small_image("button_angel".to_string())
+                   // )
+            )
+            .expect("Couldn't start discord RPC.");
 
         handle.join().unwrap();
     });

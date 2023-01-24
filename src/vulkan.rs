@@ -5,9 +5,10 @@ use crate::consts::*;
 use crate::game::Object;
 use image::DynamicImage;
 use std::collections::HashMap;
+use std::default;
 use std::io::Cursor;
 use std::sync::Arc;
-use vulkano::buffer::{CpuBufferPool, BufferUsage};
+use vulkano::buffer::{BufferUsage, CpuBufferPool};
 use vulkano::command_buffer::{
     allocator::StandardCommandBufferAllocator, AutoCommandBufferBuilder, CommandBufferUsage,
     PrimaryCommandBufferAbstract, RenderPassBeginInfo, SubpassContents,
@@ -22,7 +23,7 @@ use vulkano::device::{Device, Queue};
 use vulkano::image::{view::ImageView, ImageAccess, ImageUsage, SwapchainImage};
 use vulkano::image::{ImageDimensions, ImmutableImage, MipmapsCount};
 use vulkano::instance::{debug::*, Instance, InstanceCreateInfo, InstanceExtensions};
-use vulkano::memory::allocator::{StandardMemoryAllocator};
+use vulkano::memory::allocator::{MemoryUsage, StandardMemoryAllocator};
 use vulkano::pipeline::graphics::color_blend::ColorBlendState;
 use vulkano::pipeline::graphics::{
     input_assembly::InputAssemblyState, vertex_input::BuffersDefinition, viewport::Viewport,
@@ -56,7 +57,6 @@ mod vertexshader {
             #[derive(Clone, Copy, Zeroable, Pod)]
         }
     }
-
 }
 
 mod fragmentshader {
@@ -85,11 +85,12 @@ pub struct App {
     viewport: Viewport,
     framebuffers: Vec<Arc<Framebuffer>>,
     pub recreate_swapchain: bool,
-    tex_descriptor: Arc<PersistentDescriptorSet>,
+    descriptors: [Arc<PersistentDescriptorSet>; 2],
     previous_frame_end: Option<Box<dyn GpuFuture>>,
     pub objects: HashMap<String, Object>,
     pub render_order: Vec<String>,
     vertex_buffer: CpuBufferPool<Vertex>,
+    object_buffer: CpuBufferPool<vertexshader::ty::Object>,
     index_buffer: CpuBufferPool<u16>,
     memoryallocator: Arc<StandardMemoryAllocator>,
     commandbufferallocator: StandardCommandBufferAllocator,
@@ -116,15 +117,23 @@ impl App {
         let vertex_buffer: CpuBufferPool<Vertex> =
             CpuBufferPool::vertex_buffer(memoryallocator.clone().into());
 
-        let index_buffer: CpuBufferPool<u16> =
-            CpuBufferPool::new(
-                memoryallocator.clone().into(),
-                BufferUsage {
-                    index_buffer: true,
-                    ..Default::default()
-                },
-                vulkano::memory::allocator::MemoryUsage::Upload
-            );
+        let object_buffer: CpuBufferPool<vertexshader::ty::Object> = CpuBufferPool::new(
+            memoryallocator.clone().into(),
+            BufferUsage {
+                uniform_buffer: true,
+                ..Default::default()
+            },
+            MemoryUsage::Upload,
+        );
+
+        let index_buffer: CpuBufferPool<u16> = CpuBufferPool::new(
+            memoryallocator.clone().into(),
+            BufferUsage {
+                index_buffer: true,
+                ..Default::default()
+            },
+            vulkano::memory::allocator::MemoryUsage::Upload,
+        );
 
         let vs = vertexshader::load(device.clone()).unwrap();
         let fs = fragmentshader::load(device.clone()).unwrap();
@@ -191,8 +200,6 @@ impl App {
         let subpass = Subpass::from(render_pass.clone(), 0).unwrap();
         let pipeline: Arc<GraphicsPipeline> = Self::create_pipeline(&device, &vs, &fs, subpass);
 
-
-        
         //Use storage buffer for object position. UGAA!
 
         //CpuAccessibleBuffer::from_data(
@@ -209,19 +216,33 @@ impl App {
         //     }
         // )
         // .unwrap();
-
-        let tex_descriptor = PersistentDescriptorSet::new(
-            &descriptor_set_allocator,
-            pipeline.layout().set_layouts().get(0).unwrap().clone(),
-            [WriteDescriptorSet::image_view_sampler(
-                0,
-                texture.clone(),
-                sampler.clone(),
-            )],
-        )
-        .unwrap();
-
-        
+        let descriptors = [
+            PersistentDescriptorSet::new(
+                &descriptor_set_allocator,
+                pipeline.layout().set_layouts().get(0).unwrap().clone(),
+                [WriteDescriptorSet::image_view_sampler(
+                    0,
+                    texture.clone(),
+                    sampler.clone(),
+                )],
+            )
+            .unwrap(),
+            PersistentDescriptorSet::new(
+                &descriptor_set_allocator,
+                pipeline.layout().set_layouts().get(1).unwrap().clone(),
+                [WriteDescriptorSet::buffer(
+                    0,
+                    object_buffer
+                        .from_data(vertexshader::ty::Object {
+                            position: [0.0, 0.0],
+                            size: [1.0, 1.0],
+                            rotation: 0.0,
+                        })
+                        .unwrap(),
+                )],
+            )
+            .unwrap(),
+        ];
 
         let mut viewport = Viewport {
             origin: [0.0, 0.0],
@@ -270,13 +291,14 @@ impl App {
                 viewport,
                 framebuffers,
                 recreate_swapchain,
-                tex_descriptor,
+                descriptors,
                 previous_frame_end,
                 objects,
                 render_order,
                 memoryallocator,
                 commandbufferallocator,
                 vertex_buffer,
+                object_buffer,
                 index_buffer,
                 descriptor_set_allocator,
             },
@@ -297,12 +319,10 @@ impl App {
             ext_debug_utils: true,
             ..required_extensions
         };
-        #[allow(unused)]
-        let layers: Vec<String> = vec![];
-        #[cfg(debug_assertions)]
+
         let layers = vec![
             "VK_LAYER_KHRONOS_validation".to_owned(),
-            "VK_LAYER_VALVE_steam_overlay_64".to_owned(),
+            //"VK_LAYER_VALVE_steam_overlay_64".to_owned(),
         ];
 
         let gameinfo = InstanceCreateInfo {
@@ -578,10 +598,7 @@ impl App {
         subpass: Subpass,
     ) -> Arc<GraphicsPipeline> {
         GraphicsPipeline::start()
-            .vertex_input_state(
-                BuffersDefinition::new()
-                .vertex::<Vertex>()
-            )
+            .vertex_input_state(BuffersDefinition::new().vertex::<Vertex>())
             .input_assembly_state(InputAssemblyState::new())
             .vertex_shader(vs.entry_point("main").unwrap(), ())
             .viewport_state(ViewportState::viewport_dynamic_scissor_irrelevant())
@@ -633,85 +650,39 @@ impl App {
             .downcast_ref::<Window>()
             .unwrap();
         let dimensions = window.inner_size();
-        //buffer updates
 
-        let mut vertices: Vec<Vertex> = Vec::new();
-        let mut indices: Vec<u16> = Vec::new();
-        // for obj in self.render_order
-        //     .iter()
-        //     .map(|x| self.objects.get(x).unwrap())
-        // {
-        //     for vertex in obj.data.iter() {
-        //         vertices.push(*vertex);
-        //     }
-        // }
+        let (image_num, suboptimal, acquire_future) =
+            match acquire_next_image(self.swapchain.clone(), None) {
+                Ok(r) => r,
+                Err(AcquireError::OutOfDate) => {
+                    self.recreate_swapchain = true;
+                    return;
+                }
+                Err(e) => panic!("Failed to acquire next image: {:?}", e),
+            };
 
-        for obj in self.render_order
-            .iter()
-            .map(|x| self.objects.get(x).unwrap())
-        {
-            for vertex in obj.data.iter() {
-                let hypo = vertex.position[0].hypot(vertex.position[1]);
-                let rotatedpos: [f32; 2] = [
-                    (f32::atan2(vertex.position[1], vertex.position[0]) + obj.rotation)
-                        .cos()
-                        * hypo, // √(2) ÷ 2 × √(2)
-                    (f32::atan2(vertex.position[1], vertex.position[0]) + obj.rotation)
-                        .sin()
-                        * hypo, //  hypo  /// x = cos(cos-1(vx : sqrt(vx^2 + vy^2) + obj.rotation)) * hypo, ;
-                ];
-                vertices.push(Vertex {
-                    position: [
-                        rotatedpos[0] * obj.size[0] + obj.position[0],
-                        rotatedpos[1] * obj.size[1] + obj.position[1],
-                    ],
-                });
-            }
-            indices.append(&mut obj.indices.clone());
-        }
+        let mut builder = AutoCommandBufferBuilder::primary(
+            &self.commandbufferallocator,
+            self.queue.queue_family_index(),
+            CommandBufferUsage::OneTimeSubmit,
+        )
+        .unwrap();
+        builder
+            .begin_render_pass(
+                RenderPassBeginInfo {
+                    clear_values: vec![Some([0.0, 0.0, 0.0, 1.0].into())],
+                    ..RenderPassBeginInfo::framebuffer(
+                        self.framebuffers[image_num as usize].clone(),
+                    )
+                },
+                SubpassContents::Inline,
+            )
+            .unwrap()
+            .set_viewport(0, [self.viewport.clone()])
+            .bind_pipeline_graphics(self.pipeline.clone());
 
-
-        let vertex_sub_buffer = self.vertex_buffer.from_iter(vertices.clone()).unwrap();
-        let index_sub_buffer = self.index_buffer.from_iter(indices.clone()).unwrap();
-
-        let mut object_indeces: Vec<u32> = vec![];
-        
-        for obj in self.objects.values().enumerate() {
-            object_indeces.extend(
-                obj.1.data.iter().map(|_|
-                   obj.0 as u32
-                )
-            );
-        }
-
-        // let objects = vertexshader::ty::objects_storage {
-        //     index: 0u32,
-        //     position: [0.0, 0.0],
-        //     size: [1.0, 1.0],
-        //     rotation: 0.0
-        // };
-
-            //make it all objects!
-
-
-        
-        let push_constants = vertexshader::ty::PushConstant {
-            resolution: [dimensions.width as f32, dimensions.height as f32],
-            camera: [0.0, 0.0]
-        };
-
-        //
-
-        
-
-        
-
-
-
-        if dimensions.width == 0 || dimensions.height == 0 {
-            return;
-        }
         self.previous_frame_end.as_mut().unwrap().cleanup_finished();
+
         if self.recreate_swapchain {
             let (new_swapchain, new_images) = match self.swapchain.recreate(SwapchainCreateInfo {
                 image_extent: dimensions.into(),
@@ -730,59 +701,76 @@ impl App {
             );
             self.recreate_swapchain = false;
         }
-        let (image_num, suboptimal, acquire_future) =
-            match acquire_next_image(self.swapchain.clone(), None) {
-                Ok(r) => r,
-                Err(AcquireError::OutOfDate) => {
-                    self.recreate_swapchain = true;
-                    return;
-                }
-                Err(e) => panic!("Failed to acquire next image: {:?}", e),
-            };
+
         if suboptimal {
             self.recreate_swapchain = true;
         }
 
+        //buffer updates
 
+        let push_constants = vertexshader::ty::PushConstant {
+            resolution: [dimensions.width as f32, dimensions.height as f32],
+            camera: [0.0, 0.0],
+        };
+        if dimensions.width == 0 || dimensions.height == 0 {
+            return;
+        }
 
-        let mut builder = AutoCommandBufferBuilder::primary(
-            &self.commandbufferallocator,
-            self.queue.queue_family_index(),
-            CommandBufferUsage::OneTimeSubmit,
-        )
-        .unwrap();
-        builder
-            .begin_render_pass(
-                RenderPassBeginInfo {
-                    clear_values: vec![Some([0.0, 0.0, 0.0, 1.0].into())],
-                    ..RenderPassBeginInfo::framebuffer(
-                        self.framebuffers[image_num as usize].clone(),
-                    )
-                },
-                SubpassContents::Inline,
+        for obj in self
+            .render_order
+            .iter()
+            .map(|x| self.objects.get(x).unwrap())
+        {
+            // for vertex in obj.data.iter() {
+            //     let hypo = vertex.position[0].hypot(vertex.position[1]);
+            //     let rotatedpos: [f32; 2] = [
+            //         (f32::atan2(vertex.position[1], vertex.position[0]) + obj.rotation)
+            //             .cos()
+            //             * hypo, // √(2) ÷ 2 × √(2)
+            //         (f32::atan2(vertex.position[1], vertex.position[0]) + obj.rotation)
+            //             .sin()
+            //             * hypo, //  hypo  /// x = cos(cos-1(vx : sqrt(vx^2 + vy^2) + obj.rotation)) * hypo, ;
+            //     ];
+            //     vertices.push(Vertex {
+            //         position: [
+            //             rotatedpos[0] * obj.size[0] + obj.position[0],
+            //             rotatedpos[1] * obj.size[1] + obj.position[1],
+            //         ],
+            //     });
+            // }
+            self.descriptors[1] = PersistentDescriptorSet::new(
+                &self.descriptor_set_allocator,
+                self.pipeline.layout().set_layouts().get(1).unwrap().clone(),
+                [WriteDescriptorSet::buffer(
+                    0,
+                    self.object_buffer
+                        .from_data(vertexshader::ty::Object {
+                            position: obj.position,
+                            size: obj.size,
+                            rotation: obj.rotation,
+                        })
+                        .unwrap(),
+                )],
             )
             .unwrap();
 
-        builder.set_viewport(0, [self.viewport.clone()])
-            .bind_pipeline_graphics(self.pipeline.clone())
-            .bind_descriptor_sets(
-                vulkano::pipeline::PipelineBindPoint::Graphics,
-                self.pipeline.layout().clone(),
-                0,
-                self.tex_descriptor.clone(),
-            )
-            .bind_vertex_buffers(
-                0,
-                vertex_sub_buffer.clone(),
-            )
-            .bind_index_buffer(index_sub_buffer.clone())
-            .push_constants(self.pipeline.layout().clone(), 0, push_constants)
-            .draw(vertices.len() as u32, 1, 0, 0)
-            .unwrap();
+            let index_sub_buffer = self.index_buffer.from_iter(obj.indices.clone()).unwrap();
+            let vertex_sub_buffer = self.vertex_buffer.from_iter(obj.data.clone()).unwrap();
+            builder
+                .bind_descriptor_sets(
+                    vulkano::pipeline::PipelineBindPoint::Graphics,
+                    self.pipeline.layout().clone(),
+                    0,
+                    self.descriptors.to_vec(),
+                )
+                .bind_vertex_buffers(0, vertex_sub_buffer.clone())
+                .bind_index_buffer(index_sub_buffer.clone())
+                .push_constants(self.pipeline.layout().clone(), 0, push_constants)
+                .draw(obj.data.len() as u32, 1, 0, 0)
+                .unwrap();
+        }
 
-
-        builder.end_render_pass()
-            .unwrap();
+        builder.end_render_pass().unwrap();
         let command_buffer = builder.build().unwrap();
 
         let future = self
@@ -797,8 +785,6 @@ impl App {
                 SwapchainPresentInfo::swapchain_image_index(self.swapchain.clone(), image_num),
             )
             .then_signal_fence_and_flush();
-
-
 
         match future {
             Ok(future) => {

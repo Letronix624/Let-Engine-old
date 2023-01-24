@@ -11,12 +11,12 @@ extern crate vulkano;
 use data::*;
 use game::{Game, Object};
 use server::Server;
-use winit::dpi::PhysicalSize;
 use std::collections::HashMap;
 use std::net::TcpListener;
 use std::sync::{Arc, Mutex};
 use std::thread::{self, sleep};
 use std::time::*;
+use winit::dpi::PhysicalSize;
 use winit::event::{ElementState, MouseButton, MouseScrollDelta, VirtualKeyCode};
 use winit::{
     event::{Event, WindowEvent},
@@ -104,14 +104,12 @@ fn client() {
     // let game = App::initialize();
     // GAME.lock().unwrap()mainloop();
     GAME.lock().unwrap().start();
-    thread::spawn(|| {
-        loop {
-            {
-                let mut game = GAME.lock().unwrap();
-                game.tick();
-            }
-            thread::sleep(Duration::from_nanos(16025641));
+    thread::spawn(|| loop {
+        {
+            let mut game = GAME.lock().unwrap();
+            game.tick();
         }
+        thread::sleep(Duration::from_nanos(16025641));
     });
     let (mut app, event_loop) = vulkan::App::initialize();
     let mut dt = unix_timestamp();
@@ -204,18 +202,16 @@ fn client() {
             Event::WindowEvent {
                 event: WindowEvent::CursorMoved { position, .. },
                 ..
-            } => {
-                unsafe {
-                    GAME.lock().unwrap().input.mouse = (
-                        (position.x as f32 / WINDOW.width as f32) * 2.0 - 1.0,
-                        (position.y as f32 / WINDOW.height as f32) * 2.0 - 1.0,
-                    )
-                }
-            }
+            } => unsafe {
+                GAME.lock().unwrap().input.mouse = (
+                    (position.x as f32 / WINDOW.width as f32) * 2.0 - 1.0,
+                    (position.y as f32 / WINDOW.height as f32) * 2.0 - 1.0,
+                )
+            },
             Event::MainEventsCleared => {
                 //game stuff early update
                 {
-                    unsafe{
+                    unsafe {
                         WINDOW = app
                             .surface
                             .object()
@@ -224,24 +220,20 @@ fn client() {
                             .unwrap()
                             .inner_size();
                     }
-                    
                 }
-                
 
                 unsafe {
                     DELTA_TIME = unix_timestamp() - dt;
                     dt = unix_timestamp();
                     FPS = (1.0 / DELTA_TIME) as u16;
                 }
-                
+
                 {
                     let mut game = GAME.lock().unwrap();
                     app.render_order = game.renderorder.to_vec();
                     app.objects = game.objects.clone();
                     game.main();
                 }
-                
-                
 
                 // app.vertices = vec![];
                 // for obj in GAME

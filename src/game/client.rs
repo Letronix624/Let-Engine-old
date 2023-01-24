@@ -50,9 +50,9 @@ impl Client {
             connected: false,
         }
     }
-    pub fn connect(&mut self) -> Result<()>{
+    pub fn connect(&mut self) -> Result<()> {
         let mut tcpserver: TcpStream = TcpStream::connect(format!("{}:{}", self.ip, self.port))?;
- 
+
         let mut udpserver: UdpSocket = UdpSocket::bind(tcpserver.local_addr().unwrap())?;
 
         {
@@ -75,7 +75,13 @@ impl Client {
         tcpserver3.read(&mut buf).unwrap();
         if buf.starts_with(&[0]) {
             // Server could be full or get a wrong password. in case of that you get kicked and getting kicked returns empty buffers.
-            return Err(std::io::Error::new(std::io::ErrorKind::ConnectionRefused, format!("Failed to connect to {}. Server refused to add you to the server.",self.ip)));
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::ConnectionRefused,
+                format!(
+                    "Failed to connect to {}. Server refused to add you to the server.",
+                    self.ip
+                ),
+            ));
         }
         self.connected = true;
         println!("Connected to {}!", self.ip);

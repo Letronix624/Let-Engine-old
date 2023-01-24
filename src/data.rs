@@ -8,13 +8,6 @@ pub struct Vertex {
     pub position: [f32; 2],
 }
 
-
-#[repr(C)]
-#[derive(Clone, Copy, Debug, Default, Zeroable, Pod)]
-pub struct VertexColor {
-    pub color: [f32; 4],
-}
-
 //struct object with position, size, rotation.
 
 impl_vertex!(Vertex, position);
@@ -59,9 +52,7 @@ pub const BACKGROUND: [Vertex; 12] = [
     },
 ];
 #[allow(dead_code)]
-pub const BACKGROUND_ID: [u16; 12] = [
-    0, 1, 2, 1, 3, 2, 4, 0, 5, 0, 2, 5
-];
+pub const BACKGROUND_ID: [u16; 12] = [0, 1, 2, 1, 3, 2, 4, 0, 5, 0, 2, 5];
 
 #[allow(dead_code)]
 pub const TRIANGLE: [Vertex; 3] = [
@@ -76,9 +67,7 @@ pub const TRIANGLE: [Vertex; 3] = [
     },
 ];
 #[allow(dead_code)]
-pub const TRIANGLE_ID: [u16; 3] = [
-    0, 1, 2
-];
+pub const TRIANGLE_ID: [u16; 3] = [0, 1, 2];
 
 #[allow(dead_code)]
 pub const SQUARE: [Vertex; 6] = [
@@ -102,9 +91,7 @@ pub const SQUARE: [Vertex; 6] = [
     },
 ];
 #[allow(dead_code)]
-pub const SQUARE_ID: [u16; 6] = [
-    0, 1, 2, 1, 2, 3
-];
+pub const SQUARE_ID: [u16; 6] = [0, 1, 2, 1, 2, 3];
 
 #[allow(dead_code)]
 pub fn make_circle(corners: usize) -> Vec<Vertex> {

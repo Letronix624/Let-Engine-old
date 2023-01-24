@@ -1,12 +1,12 @@
 mod client;
-mod sound;
 mod discord;
+mod sound;
 
 use std::collections::HashMap;
 
 use crate::data::{self};
 
-use super::{delta_time, fps, window, BACKGROUND, SQUARE, BACKGROUND_ID};
+use super::{delta_time, fps, window, BACKGROUND, BACKGROUND_ID, SQUARE};
 
 use client::{get_ping, Client};
 
@@ -58,7 +58,7 @@ pub struct Object {
     pub size: [f32; 2],
     pub rotation: f32,
     pub data: Vec<super::Vertex>,
-    pub indices: Vec<u16>
+    pub indices: Vec<u16>,
 }
 impl Object {
     pub fn empty() -> Self {
@@ -67,7 +67,7 @@ impl Object {
             size: [0.0, 0.0],
             rotation: 0.0,
             data: vec![],
-            indices: vec![]
+            indices: vec![],
         }
     }
 }
@@ -118,7 +118,7 @@ impl Game {
                 size,
                 rotation,
                 data,
-                indices
+                indices,
             },
         );
         self.renderorder.push(name);
@@ -181,18 +181,16 @@ impl Game {
         self.input.vsd = 0.0;
 
         self.setobject("player1".to_string(), player);
-
     }
 
     pub fn late_main(&mut self) {
         //Runs every time after the redraw events are done.
-        
     }
 
     pub fn tick(&mut self) {
         //Runs 62.4 times per second.
 
-        // if self.client.connected { 
+        // if self.client.connected {
         //     //Client data sender
         //     let player = self.getobject("player1".to_string());
         //     if self.olddata.position != player.position || self.olddata.size != player.size {
