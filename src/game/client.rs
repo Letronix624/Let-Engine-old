@@ -168,6 +168,7 @@ impl Client {
                                         f32::from_be_bytes(buf[13 + c..17 + c].try_into().unwrap()),
                                     ],
                                     rotation: 0.0,
+                                    color: [1.0, 0.0, 1.0, 1.0],
                                     data: SQUARE.to_vec(),
                                     indices: SQUARE_ID.to_vec(),
                                 };

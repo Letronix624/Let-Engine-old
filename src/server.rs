@@ -105,6 +105,7 @@ impl Server {
                                     f32::from_be_bytes(buf[13..17].try_into().unwrap()),
                                 ],
                                 rotation: 0.0,
+                                color: [1.0, 0.0, 1.0, 1.0],
                                 data: super::SQUARE.to_vec(),
                                 indices: super::SQUARE_ID.to_vec(),
                             };

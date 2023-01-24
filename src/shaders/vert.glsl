@@ -1,11 +1,11 @@
 #version 450
 
 layout (location = 0) in vec2 position;
-layout (location = 0) out int obj1;
 layout (location = 1) out vec2 tex_coords;
 layout (location = 2) out vec4 vertex_color;
 
 layout (set = 1, binding = 0) uniform Object {
+    vec4 color;
     vec2 position;
     vec2 size;
     float rotation;
@@ -60,16 +60,15 @@ void main() {
 
     // y / (x + y)
 
-    vertex_color = colors[gl_VertexIndex];
+    vertex_color = object.color;
 
     //vec2 resolutionscaler = vec2(pc.resolution.y / (pc.resolution.x + pc.resolution.y), pc.resolution.x / (pc.resolution.x + pc.resolution.y));
     vec2 resolutionscaler = vec2(sin(atan(pc.resolution.y, pc.resolution.x)), cos(atan(pc.resolution.y, pc.resolution.x)))  / (sqrt(2) / 2);
 
     
     gl_Position = vec4((rotatedpos - pc.camera / pc.resolution) * resolutionscaler, 0.0, 1.0);
-    obj1 = 0;
-    if (gl_VertexIndex >= colors.length()){
-        tex_coords = (position - pc.camera / pc.resolution) * resolutionscaler;
-        obj1 = 1;
-    }
+
+    tex_coords = (position - pc.camera / pc.resolution) * resolutionscaler;
+
+    
 }

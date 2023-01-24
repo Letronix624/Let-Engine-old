@@ -57,6 +57,7 @@ pub struct Object {
     pub position: [f32; 2],
     pub size: [f32; 2],
     pub rotation: f32,
+    pub color: [f32; 4],
     pub data: Vec<super::Vertex>,
     pub indices: Vec<u16>,
 }
@@ -66,6 +67,7 @@ impl Object {
             position: [0.0, 0.0],
             size: [0.0, 0.0],
             rotation: 0.0,
+            color: [0.0, 0.0, 0.0, 0.0],
             data: vec![],
             indices: vec![],
         }
@@ -105,6 +107,7 @@ impl Game {
     fn newobject(
         &mut self,
         name: String,
+        color: [f32; 4],
         data: Vec<super::Vertex>,
         indices: Vec<u16>,
         position: [f32; 2],
@@ -117,6 +120,7 @@ impl Game {
                 position,
                 size,
                 rotation,
+                color,
                 data,
                 indices,
             },
@@ -127,6 +131,7 @@ impl Game {
         //Runs one time before the first Frame.
         self.newobject(
             "background".to_string(),
+            [0.1, 0.3, 0.9, 1.0],
             BACKGROUND.to_vec(),
             BACKGROUND_ID.to_vec(),
             [0.0, 0.0],
@@ -135,6 +140,7 @@ impl Game {
         );
         self.newobject(
             "player1".to_string(),
+            [0.0, 0.0, 0.0, 1.0],
             data::make_circle(50),
             data::make_circle_id(50),
             [0.0, 0.0],

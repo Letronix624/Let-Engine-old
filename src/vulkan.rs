@@ -234,6 +234,7 @@ impl App {
                     0,
                     object_buffer
                         .from_data(vertexshader::ty::Object {
+                            color: [0.0, 0.0, 0.0, 0.0],
                             position: [0.0, 0.0],
                             size: [1.0, 1.0],
                             rotation: 0.0,
@@ -670,7 +671,7 @@ impl App {
         builder
             .begin_render_pass(
                 RenderPassBeginInfo {
-                    clear_values: vec![Some([0.0, 0.0, 0.0, 1.0].into())],
+                    clear_values: vec![Some([0.0, 0.0, 0.0, 0.0].into())],
                     ..RenderPassBeginInfo::framebuffer(
                         self.framebuffers[image_num as usize].clone(),
                     )
@@ -721,23 +722,6 @@ impl App {
             .iter()
             .map(|x| self.objects.get(x).unwrap())
         {
-            // for vertex in obj.data.iter() {
-            //     let hypo = vertex.position[0].hypot(vertex.position[1]);
-            //     let rotatedpos: [f32; 2] = [
-            //         (f32::atan2(vertex.position[1], vertex.position[0]) + obj.rotation)
-            //             .cos()
-            //             * hypo, // √(2) ÷ 2 × √(2)
-            //         (f32::atan2(vertex.position[1], vertex.position[0]) + obj.rotation)
-            //             .sin()
-            //             * hypo, //  hypo  /// x = cos(cos-1(vx : sqrt(vx^2 + vy^2) + obj.rotation)) * hypo, ;
-            //     ];
-            //     vertices.push(Vertex {
-            //         position: [
-            //             rotatedpos[0] * obj.size[0] + obj.position[0],
-            //             rotatedpos[1] * obj.size[1] + obj.position[1],
-            //         ],
-            //     });
-            // }
             self.descriptors[1] = PersistentDescriptorSet::new(
                 &self.descriptor_set_allocator,
                 self.pipeline.layout().set_layouts().get(1).unwrap().clone(),
@@ -745,6 +729,7 @@ impl App {
                     0,
                     self.object_buffer
                         .from_data(vertexshader::ty::Object {
+                            color: obj.color,
                             position: obj.position,
                             size: obj.size,
                             rotation: obj.rotation,
