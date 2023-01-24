@@ -4,7 +4,7 @@ mod sound;
 
 use std::collections::HashMap;
 
-use crate::data::{self};
+use crate::data::{self, SQUARE_ID};
 
 use super::{delta_time, fps, window, BACKGROUND, BACKGROUND_ID, SQUARE};
 
@@ -58,6 +58,7 @@ pub struct Object {
     pub size: [f32; 2],
     pub rotation: f32,
     pub color: [f32; 4],
+    //pub texture: Option<>
     pub data: Vec<super::Vertex>,
     pub indices: Vec<u16>,
 }
@@ -140,9 +141,9 @@ impl Game {
         );
         self.newobject(
             "player1".to_string(),
-            [0.0, 0.0, 0.0, 1.0],
-            data::make_circle(50),
-            data::make_circle_id(50),
+            [0.1, 0.0, 0.0, 1.0],
+            SQUARE.into(),
+            SQUARE_ID.into(),
             [0.0, 0.0],
             [0.3, 0.3],
             0.0,
@@ -159,7 +160,7 @@ impl Game {
     pub fn main(&mut self) {
         //Runs every single frame once.
 
-        //println!("FPS:{} Ping:{}", fps(), get_ping());
+        println!("FPS:{} Ping:{}", fps(), get_ping());
 
         let mut player = self.getobject("player1".to_string());
         player.position = [
@@ -178,12 +179,12 @@ impl Game {
                 * 2.0
         });
 
-        if player.data.len() <= 9 && self.input.vsd == -1.0 {
-            self.input.vsd = 0.0;
-        }
-        player.data = data::make_circle(
-            ((player.data.len() / 3) as isize + self.input.vsd as isize) as usize,
-        );
+        // if player.data.len() <= 9 && self.input.vsd == -1.0 {
+        //     self.input.vsd = 0.0;
+        // }
+        // player.data = data::make_circle(
+        //     ((player.data.len() / 3) as isize + self.input.vsd as isize) as usize,
+        // );
         self.input.vsd = 0.0;
 
         self.setobject("player1".to_string(), player);

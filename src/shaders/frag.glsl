@@ -6,7 +6,7 @@ layout (set = 0, binding = 0) uniform sampler2D tex;
 
 
 void main() {
-    vec4 texture = texture(tex, tex_coords+0.5);
+    vec4 texture = texture(tex, tex_coords / 2 + 0.5);
     f_color = texture;
     if (texture.a != 1.0) {
         f_color = vertex_color;

@@ -156,7 +156,7 @@ impl App {
         .unwrap();
 
         let texture = {
-            let png_bytes = include_bytes!("../assets/textures/shidkitty69.png").to_vec();
+            let png_bytes = include_bytes!("../assets/textures/test.png").to_vec();
             let cursor = Cursor::new(png_bytes);
             let decoder = png::Decoder::new(cursor);
             let mut reader = decoder.read_info().unwrap();
@@ -166,6 +166,7 @@ impl App {
                 height: info.height,
                 array_layers: 1,
             };
+
             let mut image_data = Vec::new();
             image_data.resize((info.width * info.height * 4) as usize, 0);
             reader.next_frame(&mut image_data).unwrap();
