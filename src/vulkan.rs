@@ -36,7 +36,7 @@ use vulkano::sampler::{Filter, Sampler, SamplerAddressMode, SamplerCreateInfo};
 use vulkano::shader::ShaderModule;
 use vulkano::swapchain::{
     acquire_next_image, AcquireError, PresentMode, Surface, Swapchain, SwapchainCreateInfo,
-    SwapchainCreationError, SwapchainPresentInfo,
+    SwapchainCreationError, SwapchainPresentInfo, ColorSpace,
 };
 use vulkano::sync::{self};
 use vulkano::sync::{FlushError, GpuFuture};
@@ -154,9 +154,9 @@ impl App {
             CommandBufferUsage::OneTimeSubmit,
         )
         .unwrap();
-
+        println!("loading rusty...");
         let texture = {
-            let png_bytes = include_bytes!("../assets/textures/test.png").to_vec();
+            let png_bytes = include_bytes!("../assets/textures/rusty.png").to_vec();
             let cursor = Cursor::new(png_bytes);
             let decoder = png::Decoder::new(cursor);
             let mut reader = decoder.read_info().unwrap();
@@ -176,7 +176,7 @@ impl App {
                 image_data,
                 dimensions,
                 MipmapsCount::One,
-                vulkano::format::Format::R8G8B8A8_SRGB,
+                vulkano::format::Format::R8G8B8A8_UNORM,
                 &mut uploads,
             )
             .unwrap();
@@ -245,6 +245,8 @@ impl App {
             )
             .unwrap(),
         ];
+
+        println!("loaded rusty");
 
         let mut viewport = Viewport {
             origin: [0.0, 0.0],
@@ -323,7 +325,7 @@ impl App {
         };
 
         let layers = vec![
-            "VK_LAYER_KHRONOS_validation".to_owned(),
+            //"VK_LAYER_KHRONOS_validation".to_owned(),
             //"VK_LAYER_VALVE_steam_overlay_64".to_owned(),
         ];
 
@@ -521,7 +523,6 @@ impl App {
                 .iter()
                 .next()
                 .unwrap(),
-
             ..Default::default()
         };
 
@@ -653,6 +654,32 @@ impl App {
             .unwrap();
         let dimensions = window.inner_size();
 
+        self.previous_frame_end.as_mut().unwrap().cleanup_finished();
+        
+        if dimensions.width == 0 || dimensions.height == 0 {
+            return;
+        }
+
+        if self.recreate_swapchain {
+            let (new_swapchain, new_images) = match self.swapchain.recreate(SwapchainCreateInfo {
+                image_extent: dimensions.into(),
+                ..self.swapchain.create_info()
+            }) {
+                Ok(r) => r,
+                Err(SwapchainCreationError::ImageExtentNotSupported { .. }) => return,
+                Err(e) => panic!("Failed to recreate swapchain: {:?}", e),
+            };
+
+            self.swapchain = new_swapchain;
+            self.framebuffers = Self::window_size_dependent_setup(
+                &new_images,
+                self.render_pass.clone(),
+                &mut self.viewport,
+            );
+            self.recreate_swapchain = false;
+        }
+
+
         let (image_num, suboptimal, acquire_future) =
             match acquire_next_image(self.swapchain.clone(), None) {
                 Ok(r) => r,
@@ -683,26 +710,8 @@ impl App {
             .set_viewport(0, [self.viewport.clone()])
             .bind_pipeline_graphics(self.pipeline.clone());
 
-        self.previous_frame_end.as_mut().unwrap().cleanup_finished();
 
-        if self.recreate_swapchain {
-            let (new_swapchain, new_images) = match self.swapchain.recreate(SwapchainCreateInfo {
-                image_extent: dimensions.into(),
-                ..self.swapchain.create_info()
-            }) {
-                Ok(r) => r,
-                Err(SwapchainCreationError::ImageExtentNotSupported { .. }) => return,
-                Err(e) => panic!("Failed to recreate swapchain: {:?}", e),
-            };
-
-            self.swapchain = new_swapchain;
-            self.framebuffers = Self::window_size_dependent_setup(
-                &new_images,
-                self.render_pass.clone(),
-                &mut self.viewport,
-            );
-            self.recreate_swapchain = false;
-        }
+        
 
         if suboptimal {
             self.recreate_swapchain = true;
@@ -714,9 +723,7 @@ impl App {
             resolution: [dimensions.width as f32, dimensions.height as f32],
             camera: [0.0, 0.0],
         };
-        if dimensions.width == 0 || dimensions.height == 0 {
-            return;
-        }
+        
 
         for obj in self
             .render_order

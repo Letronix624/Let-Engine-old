@@ -130,15 +130,15 @@ impl Game {
     }
     pub fn start(&mut self) {
         //Runs one time before the first Frame.
-        self.newobject(
-            "background".to_string(),
-            [0.1, 0.3, 0.9, 1.0],
-            BACKGROUND.to_vec(),
-            BACKGROUND_ID.to_vec(),
-            [0.0, 0.0],
-            [1.0, 1.0],
-            0.0,
-        );
+        // self.newobject(
+        //     "background".to_string(),
+        //     [0.1, 0.3, 0.9, 1.0],
+        //     BACKGROUND.to_vec(),
+        //     BACKGROUND_ID.to_vec(),
+        //     [0.0, 0.0],
+        //     [1.0, 1.0],
+        //     0.0,
+        // );
         self.newobject(
             "player1".to_string(),
             [0.1, 0.0, 0.0, 1.0],
@@ -160,7 +160,7 @@ impl Game {
     pub fn main(&mut self) {
         //Runs every single frame once.
 
-        println!("FPS:{} Ping:{}", fps(), get_ping());
+        // println!("FPS:{} Ping:{}", fps(), get_ping());
 
         let mut player = self.getobject("player1".to_string());
         player.position = [

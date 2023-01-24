@@ -68,7 +68,7 @@ void main() {
     
     gl_Position = vec4((rotatedpos - pc.camera / pc.resolution) * resolutionscaler, 0.0, 1.0);
 
-    tex_coords = (position - pc.camera / pc.resolution) * resolutionscaler;
+    tex_coords = position - pc.camera;// / pc.resolution) * resolutionscaler;
 
     
 }
