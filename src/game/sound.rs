@@ -1,6 +1,7 @@
 use rodio::{Decoder, OutputStream};
 use std::{io::Cursor, thread};
 
+#[allow(dead_code)]
 pub fn memeloop() {
     thread::spawn(|| {
         let (_stream, soundhandle) = OutputStream::try_default().unwrap();

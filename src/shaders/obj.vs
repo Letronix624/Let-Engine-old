@@ -46,7 +46,7 @@ void main() {
 
     float hypo = sqrt(pow(position.x, 2) + pow(position.y, 2));
 
-    vec2 rotatedpos = vec2(
+    vec2 processedpos = vec2(
         cos(
             atan(position.y, position.x) + object.rotation
         ) * hypo,
@@ -66,7 +66,7 @@ void main() {
     vec2 resolutionscaler = vec2(sin(atan(pc.resolution.y, pc.resolution.x)), cos(atan(pc.resolution.y, pc.resolution.x)))  / (sqrt(2) / 2);
 
     
-    gl_Position = vec4((rotatedpos - pc.camera / pc.resolution) * resolutionscaler, 0.0, 1.0);
+    gl_Position = vec4((processedpos - pc.camera / pc.resolution) * resolutionscaler, 0.0, 1.0);
 
     tex_coords = position - pc.camera;// / pc.resolution) * resolutionscaler;
 

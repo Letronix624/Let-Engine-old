@@ -11,7 +11,6 @@ extern crate vulkano;
 use data::*;
 use game::{Game, Object};
 use server::Server;
-use std::collections::HashMap;
 use std::net::TcpListener;
 use std::sync::{Arc, Mutex};
 use std::thread::{self, sleep};

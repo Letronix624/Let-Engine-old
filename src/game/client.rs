@@ -24,6 +24,7 @@ lazy_static::lazy_static! {
 fn set_ping() {
     unsafe { PING = (unix_timestamp() - PINGTIMER) as u32 }
 }
+#[allow(dead_code)] //temp
 pub fn get_ping() -> u32 {
     unsafe { PING }
 }
@@ -34,6 +35,7 @@ pub struct Client {
     pub port: usize,
     pub connected: bool,
 }
+#[allow(dead_code)] //temp
 impl Client {
     pub fn new() -> Self {
         Self {

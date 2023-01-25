@@ -4,10 +4,11 @@ mod sound;
 
 use std::collections::HashMap;
 
-use crate::data::{self, SQUARE_ID};
-
+#[allow(unused_imports)]
 use super::{delta_time, fps, window, BACKGROUND, BACKGROUND_ID, SQUARE};
+use crate::data::SQUARE_ID;
 
+#[allow(unused_imports)]
 use client::{get_ping, Client};
 
 #[derive(Clone, Copy)]
@@ -75,6 +76,7 @@ impl Object {
     }
 }
 #[derive(Clone)]
+#[allow(dead_code)]
 pub struct Game {
     pub objects: HashMap<String, Object>,
     pub renderorder: Vec<String>, //variable that has the order of object render
@@ -160,16 +162,13 @@ impl Game {
     pub fn main(&mut self) {
         //Runs every single frame once.
 
-        // println!("FPS:{} Ping:{}", fps(), get_ping());
 
         let mut player = self.getobject("player1".to_string());
         player.position = [
             player.position[0] + delta_time() as f32 * self.input.get_xy().0 * player.size[0] * 8.0,
             player.position[1] + delta_time() as f32 * self.input.get_xy().1 * player.size[1] * 8.0,
         ];
-        if self.input.r {
-            player.position = [0.0, 0.0];
-        }
+        
         player.rotation +=
             delta_time() as f32 * (self.input.rmb as i32 - self.input.lmb as i32) as f32 * 5.0;
         player.size = player.size.map(|x| {
@@ -178,7 +177,10 @@ impl Game {
                 * player.size[0]
                 * 2.0
         });
-
+        if self.input.r {
+            player.position = [0.0, 0.0];
+            player.rotation = 0.0;
+        }
         // if player.data.len() <= 9 && self.input.vsd == -1.0 {
         //     self.input.vsd = 0.0;
         // }
@@ -197,6 +199,7 @@ impl Game {
     pub fn tick(&mut self) {
         //Runs 62.4 times per second.
 
+        println!("FPS:{} Ping:{}", fps(), get_ping());
         // if self.client.connected {
         //     //Client data sender
         //     let player = self.getobject("player1".to_string());
