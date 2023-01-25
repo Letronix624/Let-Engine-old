@@ -39,7 +39,7 @@ pub fn create_swapchain_and_images(
         image_format,
         image_extent: innersize,
         image_usage,
-        present_mode: PresentMode::Mailbox,
+        present_mode: PresentMode::Fifo,
         composite_alpha: surface_capabilities
             .supported_composite_alpha
             .iter()

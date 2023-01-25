@@ -83,6 +83,7 @@ pub struct Game {
     pub input: InputState,
     client: Client,
     olddata: Object,
+    direction: [i8; 2]
 }
 
 impl Game {
@@ -93,6 +94,7 @@ impl Game {
             input: InputState::new(),
             client: Client::new(),
             olddata: Object::empty(),
+            direction: [1, 1],
         }
     }
     pub fn getobject(&self, name: String) -> Object {
@@ -147,7 +149,7 @@ impl Game {
             SQUARE.into(),
             SQUARE_ID.into(),
             [0.0, 0.0],
-            [0.3, 0.3],
+            [0.15, 0.15],
             0.0,
         );
 
@@ -163,33 +165,7 @@ impl Game {
         //Runs every single frame once.
 
 
-        let mut player = self.getobject("player1".to_string());
-        player.position = [
-            player.position[0] + delta_time() as f32 * self.input.get_xy().0 * player.size[0] * 8.0,
-            player.position[1] + delta_time() as f32 * self.input.get_xy().1 * player.size[1] * 8.0,
-        ];
         
-        player.rotation +=
-            delta_time() as f32 * (self.input.rmb as i32 - self.input.lmb as i32) as f32 * 5.0;
-        player.size = player.size.map(|x| {
-            x + delta_time() as f32
-                * (self.input.e as i32 - self.input.q as i32) as f32
-                * player.size[0]
-                * 2.0
-        });
-        if self.input.r {
-            player.position = [0.0, 0.0];
-            player.rotation = 0.0;
-        }
-        // if player.data.len() <= 9 && self.input.vsd == -1.0 {
-        //     self.input.vsd = 0.0;
-        // }
-        // player.data = data::make_circle(
-        //     ((player.data.len() / 3) as isize + self.input.vsd as isize) as usize,
-        // );
-        self.input.vsd = 0.0;
-
-        self.setobject("player1".to_string(), player);
     }
 
     pub fn late_main(&mut self) {
@@ -200,6 +176,55 @@ impl Game {
         //Runs 62.4 times per second.
 
         // println!("FPS:{} Ping:{}", fps(), get_ping());
+        let mut player = self.getobject("player1".to_string());
+
+        player.position = [
+            player.position[0] + self.direction[0] as f32 / 100.0,
+            player.position[1] + self.direction[1] as f32 / 100.0,
+        ];
+        
+
+        //vec2 resolutionscaler = vec2(pc.resolution.y / (pc.resolution.x + pc.resolution.y), pc.resolution.x / (pc.resolution.x + pc.resolution.y));
+        //vec2 resolutionscaler = vec2(sin(atan(pc.resolution.y, pc.resolution.x)), cos(atan(pc.resolution.y, pc.resolution.x)))  / (sqrt(2) / 2);
+        // player.position = [
+        //     (window().width as f32 / 1000 as f32),
+        //     (window().height as f32 / 1000 as f32)
+        // ];
+
+        // println!("{}", (window().width as f32 / window().height as f32));
+        
+        if player.position[0] > (window().width as f32 / 1000 as f32) - player.size[0] {
+            self.direction[0] = -1;
+        }
+        else if player.position[0] < -(window().width as f32 / 1000 as f32) + player.size[0] {
+            self.direction[0] = 1;
+        }
+        if player.position[1] > (window().height as f32 / 1000 as f32) - player.size[1] {
+            self.direction[1] = -1;
+        }
+        else if player.position[1] < -(window().height as f32 / 1000 as f32) + player.size[1] {
+            self.direction[1] = 1;
+        }
+
+        
+        if self.input.r {
+            player.position = [0.0, 0.0];
+            player.rotation = 0.0;
+            self.direction = [0, 0];
+        }
+        // if player.data.len() <= 9 && self.input.vsd == -1.0 {
+        //     self.input.vsd = 0.0;
+        // }
+        // player.data = data::make_circle(
+        //     ((player.data.len() / 3) as isize + self.input.vsd as isize) as usize,
+        // );
+
+        self.setobject("player1".to_string(), player);
+
+
+
+
+
         // if self.client.connected {
         //     //Client data sender
         //     let player = self.getobject("player1".to_string());

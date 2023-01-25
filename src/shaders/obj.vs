@@ -56,15 +56,16 @@ void main() {
     ) * object.size + object.position;
 
     
-    // y bound (position + pc.camera / pc.resolution) * pc.resolution.y
+    // y bound (position - pc.camera / pc.resolution) * pc.resolution.y
 
     // y / (x + y)
 
     vertex_color = object.color;
 
-    //vec2 resolutionscaler = vec2(pc.resolution.y / (pc.resolution.x + pc.resolution.y), pc.resolution.x / (pc.resolution.x + pc.resolution.y));
-    vec2 resolutionscaler = vec2(sin(atan(pc.resolution.y, pc.resolution.x)), cos(atan(pc.resolution.y, pc.resolution.x)))  / (sqrt(2) / 2);
 
+    //vec2 resolutionscaler = vec2(pc.resolution.y / (pc.resolution.x + pc.resolution.y), pc.resolution.x / (pc.resolution.x + pc.resolution.y));
+    //vec2 resolutionscaler = vec2(sin(atan(pc.resolution.y, pc.resolution.x)), cos(atan(pc.resolution.y, pc.resolution.x)))  / (sqrt(2) / 2);
+    vec2 resolutionscaler = vec2(1000.0 / pc.resolution.x, 1000.0 / pc.resolution.y);
     
     gl_Position = vec4((processedpos - pc.camera / pc.resolution) * resolutionscaler, 0.0, 1.0);
 

@@ -1,12 +1,11 @@
 
 [package]
-name = "let_engine"
-version = "0.0.1"
+name = "rusty_saver"
+version = "1.0.0"
 authors = ["Let"]
 edition = "2021"
-description = "A test game engine to learn vulkan made by Let."
+description = "rusty dvd"
 readme = "README.md"
-homepage = "http://selfon.ddns.net/"
 repository = "https://github.com/Letronix624/Let-Engine"
 license = "MIT OR Apache-2.0"
 keywords = [
@@ -31,8 +30,6 @@ lazy_static = "1.4.0"
 rodio = "0.16.0"
 png = "0.17.7"
 discord-presence = "0.5.14"
-rusttype = "0.9.3"
-glyph_brush = "0.7.5"
 
 [profile.release]
 strip = "symbols"
