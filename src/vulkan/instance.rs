@@ -41,8 +41,8 @@ pub fn create_instance() -> Arc<Instance> {
         engine_name: Some("Let Engine".into()),
         engine_version: Version {
             major: (0),
-            minor: (0),
-            patch: (1),
+            minor: (1),
+            patch: (0),
         },
         ..Default::default()
     };

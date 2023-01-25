@@ -234,32 +234,6 @@ fn client() {
                     game.main();
                 }
 
-                // app.vertices = vec![];
-                // for obj in GAME
-                //     .lock()
-                //     .unwrap()
-                //     .renderorder
-                //     .iter()
-                //     .map(|x| objects.get(x).unwrap())
-                // {
-                //     for vertex in obj.data.iter() {
-                //         let hypo = vertex.position[0].hypot(vertex.position[1]);
-                //         let rotatedpos: [f32; 2] = [
-                //             (f32::atan2(vertex.position[1], vertex.position[0]) + obj.rotation)
-                //                 .cos()
-                //                 * hypo, // √(2) ÷ 2 × √(2)
-                //             (f32::atan2(vertex.position[1], vertex.position[0]) + obj.rotation)
-                //                 .sin()
-                //                 * hypo, //  hypo  /// x = cos(cos-1(vx : sqrt(vx^2 + vy^2) + obj.rotation)) * hypo, ;
-                //         ];
-                //         app.vertices.push(Vertex {
-                //             position: [
-                //                 rotatedpos[0] * obj.size[0] + obj.position[0],
-                //                 rotatedpos[1] * obj.size[1] + obj.position[1],
-                //             ],
-                //         });
-                //     }
-                // }
             }
             Event::RedrawEventsCleared => {
                 app.redrawevent();
