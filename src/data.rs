@@ -119,7 +119,7 @@ pub fn make_circle(corners: usize) -> Vec<Vertex> {
 #[allow(dead_code)]
 pub fn make_circle_id(corners: usize) -> Vec<u16> {
     let mut result: Vec<u16> = vec![];
-    for i in 0..corners - 1 {
+    for i in 1..corners {
         result.push(0);
         result.push(i as u16);
         result.push(i as u16 + 1);

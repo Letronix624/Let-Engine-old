@@ -72,6 +72,6 @@ layout (set = 0, binding = 0) uniform sampler2D tex;
 
 void main() {
     vec4 color = texture(tex, tex_coords / 2 + 0.5);
-    f_color = color;// * 2.2;
+    f_color = vec4(1.0, 1.0, 1.0, 1.0);//color;// * 2.2;
 }
 

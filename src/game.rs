@@ -199,7 +199,7 @@ impl Game {
     pub fn tick(&mut self) {
         //Runs 62.4 times per second.
 
-        println!("FPS:{} Ping:{}", fps(), get_ping());
+        // println!("FPS:{} Ping:{}", fps(), get_ping());
         // if self.client.connected {
         //     //Client data sender
         //     let player = self.getobject("player1".to_string());

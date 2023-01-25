@@ -225,7 +225,19 @@ impl App {
             .unwrap(),
         ];
 
-        println!("loaded rusty");
+        println!("loaded rusty\nLoading fonts..");
+
+
+
+
+
+
+
+
+
+
+
+
 
         let mut viewport = Viewport {
             origin: [0.0, 0.0],
@@ -417,6 +429,9 @@ impl App {
             camera: [0.0, 0.0],
         };
 
+
+
+        //Draw Objects
         for obj in self
             .render_order
             .iter()
@@ -454,6 +469,18 @@ impl App {
                 .draw(obj.data.len() as u32, 1, 0, 0)
                 .unwrap();
         }
+        //Draw Fonts
+        // let text = "Mein Kater Rusty";
+
+
+
+
+
+
+
+
+
+
 
         builder.end_render_pass().unwrap();
         let command_buffer = builder.build().unwrap();
