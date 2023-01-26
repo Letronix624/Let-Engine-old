@@ -8,9 +8,17 @@ pub struct Vertex {
     pub position: [f32; 2],
 }
 
+#[repr(C)]
+#[derive(Clone, Copy, Debug, Default, Zeroable, Pod)]
+pub struct TextVertex {
+    pub position: [f32; 2],
+    pub tex_position: [f32; 2],
+}
+
 //struct object with position, size, rotation.
 
 impl_vertex!(Vertex, position);
+impl_vertex!(TextVertex, position, tex_position);
 
 #[allow(dead_code)]
 pub const BACKGROUND: [Vertex; 12] = [

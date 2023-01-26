@@ -5,19 +5,26 @@ use crate::game::Object;
 use std::collections::HashMap;
 use std::io::Cursor;
 use std::sync::Arc;
-use vulkano::buffer::{BufferUsage, CpuBufferPool};
+use vulkano::buffer::{BufferUsage, CpuBufferPool, CpuAccessibleBuffer};
+use vulkano::command_buffer::CopyBufferToImageInfo;
 use vulkano::command_buffer::{
     allocator::StandardCommandBufferAllocator, AutoCommandBufferBuilder, CommandBufferUsage,
     PrimaryCommandBufferAbstract, RenderPassBeginInfo, SubpassContents,
 };
+use rusttype::{Font, PositionedGlyph, Scale, Rect, point};
+use rusttype::gpu_cache::Cache;
 use vulkano::descriptor_set::allocator::StandardDescriptorSetAllocator;
 use vulkano::descriptor_set::{PersistentDescriptorSet, WriteDescriptorSet};
 use vulkano::device::physical::PhysicalDevice;
 use vulkano::device::DeviceExtensions;
 use vulkano::device::{Device, Queue};
+use vulkano::format::Format;
+use vulkano::image::immutable::ImmutableImageInitialization;
+use vulkano::image::view::ImageViewCreateInfo;
 use vulkano::image::{view::ImageView, ImageAccess, SwapchainImage};
-use vulkano::image::{ImageDimensions, ImmutableImage, MipmapsCount};
+use vulkano::image::{ImageDimensions, ImmutableImage, MipmapsCount, ImageUsage, ImageCreateFlags, ImageLayout};
 use vulkano::instance::{debug::*, Instance};
+use vulkano::memory;
 use vulkano::memory::allocator::{MemoryUsage, StandardMemoryAllocator};
 use vulkano::pipeline::graphics::viewport::Viewport;
 use vulkano::pipeline::{GraphicsPipeline, Pipeline};
@@ -35,29 +42,17 @@ use winit::{
     event_loop::EventLoop,
     window::{Fullscreen, Window},
 };
-mod vertexshader {
-    vulkano_shaders::shader! {
-        ty: "vertex",
-        path: "src/shaders/obj.vs",
-        types_meta: {
-            use bytemuck::{Pod, Zeroable};
 
-            #[derive(Clone, Copy, Zeroable, Pod)]
-        }
-    }
-}
 
-mod fragmentshader {
-    vulkano_shaders::shader! {
-        ty: "fragment",
-        path: "src/shaders/obj.fs"
-    }
-}
 
+
+mod shaders;
 mod instance;
 mod pipeline;
 mod swapchain;
 mod window;
+
+use shaders::*;
 
 #[allow(unused)]
 pub struct App {
@@ -88,6 +83,10 @@ pub struct App {
     memoryallocator: Arc<StandardMemoryAllocator>,
     commandbufferallocator: StandardCommandBufferAllocator,
     descriptor_set_allocator: StandardDescriptorSetAllocator,
+    text_pipeline: Arc<GraphicsPipeline>,
+    text_vertex_buffer:Arc<CpuAccessibleBuffer<[TextVertex]>>,
+    text_set: Arc<PersistentDescriptorSet>,
+    text_vertices: Vec<TextVertex>,
 }
 
 impl App {
@@ -103,6 +102,15 @@ impl App {
             &device_extensions,
             queue_family_index,
         );
+
+        let dimensions: [f32; 2] = surface
+            .object()
+            .unwrap()
+            .downcast_ref::<Window>()
+            .unwrap()
+            .inner_size()
+            .into();
+
         let (swapchain, images) = swapchain::create_swapchain_and_images(&device, &surface);
 
         let memoryallocator = Arc::new(StandardMemoryAllocator::new_default(device.clone()));
@@ -130,6 +138,8 @@ impl App {
 
         let vs = vertexshader::load(device.clone()).unwrap();
         let fs = fragmentshader::load(device.clone()).unwrap();
+
+
 
         println!(
             "Using device: {} (type: {:?})",
@@ -192,7 +202,7 @@ impl App {
         .unwrap();
 
         let subpass = Subpass::from(render_pass.clone(), 0).unwrap();
-        let pipeline: Arc<GraphicsPipeline> = pipeline::create_pipeline(&device, &vs, &fs, subpass);
+        let pipeline: Arc<GraphicsPipeline> = pipeline::create_pipeline(&device, &vs, &fs, subpass.clone());
 
 
 
@@ -227,10 +237,169 @@ impl App {
 
         println!("loaded rusty\nLoading fonts..");
 
+        let font_data = include_bytes!("../assets/fonts/Bani-Regular.ttf");
+        let font = Font::try_from_bytes(font_data).unwrap();
+
+        let tvs = text_vertexshader::load(device.clone()).unwrap();
+        let tfs = text_fragmentshader::load(device.clone()).unwrap();
+        
+        let mut cache = Cache::builder().dimensions(1000, 1000).build();
+        let mut cache_pixel_buffer = vec!(0; 1000 * 1000);
+
+        let text_pipeline = pipeline::create_font_pipeline(
+            &device,
+            &tvs,
+            &tfs,
+            subpass,
+            dimensions
+        );
+
+        let glyphs: Vec<PositionedGlyph> = font.layout(
+            "Mein Kater Rusty",
+            Scale::uniform(50.0),
+            point(300.0, 500.0)
+        ).map(|x| x).collect();
+
+        for glyph in &glyphs {
+            cache.queue_glyph(0, glyph.clone())
+        }
+
+        // update texture cache
+        cache.cache_queued(
+            |rect, src_data| {
+                let width = (rect.max.x - rect.min.x) as usize;
+                let height = (rect.max.y - rect.min.y) as usize;
+                let mut dst_index = rect.min.y as usize * 1000 + rect.min.x as usize;
+                let mut src_index = 0;
+
+                for _ in 0..height {
+                    let dst_slice = &mut cache_pixel_buffer[dst_index..dst_index+width];
+                    let src_slice = &src_data[src_index..src_index+width];
+                    dst_slice.copy_from_slice(src_slice);
+
+                    dst_index += 1000;
+                    src_index += width;
+                }
+            }
+        ).unwrap();
+
+
+        // let (cache_texture, cache_texture_write) = ImmutableImage::uninitialized(
+        //     &memoryallocator,
+        //     ImageDimensions::Dim2d { width: 1000 as u32, height: 1000 as u32, array_layers: 1 },
+        //     vulkano::format::Format::R8_UNORM,
+        //     1,
+        //     ImageUsage {
+        //         sampled: true,
+        //         transfer_dst: true,
+        //         .. ImageUsage::empty()
+        //     },
+        //     ImageCreateFlags::empty(),
+        //     ImageLayout::General,
+        //     Some(queue.queue_family_index())
+        // ).unwrap();
+
+        let cache_texture = ImmutableImage::from_iter(
+            &memoryallocator,
+            cache_pixel_buffer.iter().cloned(),
+            ImageDimensions::Dim2d { width: 1000, height: 1000, array_layers: 1 },
+            MipmapsCount::One,
+            vulkano::format::Format::R8_UNORM,
+            &mut uploads,
+        )
+        .unwrap();
 
 
 
+        let sampler = Sampler::new(
+            device.clone(),
+            SamplerCreateInfo {
+                mag_filter: Filter::Nearest,
+                min_filter: Filter::Linear,
+                address_mode: [
+                    SamplerAddressMode::Repeat,
+                    SamplerAddressMode::Repeat,
+                    SamplerAddressMode::Repeat,
+                ],
+                ..Default::default()
+            },
+        )
+        .unwrap();
 
+        let cache_texture_view = ImageView::new_default(cache_texture).unwrap();
+        let text_set = PersistentDescriptorSet::new(
+            &descriptor_set_allocator,
+            text_pipeline.layout().set_layouts().get(0).unwrap().clone(),
+            [WriteDescriptorSet::image_view_sampler(
+                0,
+                cache_texture_view.clone(),
+                sampler.clone(),
+            )],
+        )
+        .unwrap();
+
+
+        let mut text_vertices: Vec<TextVertex> = vec![];
+        for text in &mut glyphs.clone().drain(..) {
+            let gly = glyphs.clone();
+            text_vertices = gly.iter().flat_map(|g| {
+                if let Ok(Some((uv_rect, screen_rect))) = cache.rect_for(0, g) {
+                    let gl_rect = Rect {
+                        min: point(
+                            (screen_rect.min.x as f32 / dimensions[0]  as f32 - 0.5) * 2.0,
+                            (screen_rect.min.y as f32 / dimensions[1] as f32 - 0.5) * 2.0
+                        ),
+                        max: point(
+                           (screen_rect.max.x as f32 / dimensions[0]  as f32 - 0.5) * 2.0,
+                           (screen_rect.max.y as f32 / dimensions[1] as f32 - 0.5) * 2.0
+                        )
+                    };
+                    vec!(
+                        TextVertex {
+                            position:     [gl_rect.min.x, gl_rect.max.y],
+                            tex_position: [uv_rect.min.x, uv_rect.max.y],
+                        },
+                        TextVertex {
+                            position:     [gl_rect.min.x, gl_rect.min.y],
+                            tex_position: [uv_rect.min.x, uv_rect.min.y],
+                        },
+                        TextVertex {
+                            position:     [gl_rect.max.x, gl_rect.min.y],
+                            tex_position: [uv_rect.max.x, uv_rect.min.y],
+                        },
+
+                        TextVertex {
+                            position:     [gl_rect.max.x, gl_rect.min.y],
+                            tex_position: [uv_rect.max.x, uv_rect.min.y],
+                        },
+                        TextVertex {
+                            position:     [gl_rect.max.x, gl_rect.max.y],
+                            tex_position: [uv_rect.max.x, uv_rect.max.y],
+                        },
+                        TextVertex {
+                            position:     [gl_rect.min.x, gl_rect.max.y],
+                            tex_position: [uv_rect.min.x, uv_rect.max.y],
+                        },
+                    ).into_iter()
+                }
+                else {
+                    vec!().into_iter()
+                }
+            }).collect();
+            
+        }
+
+        let text_vertex_buffer = CpuAccessibleBuffer::from_iter(
+            &memoryallocator,
+            BufferUsage {
+                vertex_buffer: true,
+                ..Default::default()
+            },
+            false,
+            text_vertices.clone().into_iter()).unwrap();
+
+
+        println!("Loaded fonts.");
 
 
 
@@ -296,6 +465,10 @@ impl App {
                 object_buffer,
                 index_buffer,
                 descriptor_set_allocator,
+                text_pipeline,
+                text_vertex_buffer,
+                text_set,
+                text_vertices,
             },
             event_loop,
         )
@@ -472,12 +645,21 @@ impl App {
         //Draw Fonts
         // let text = "Mein Kater Rusty";
 
+        builder
+            .bind_pipeline_graphics(self.text_pipeline.clone())
+            .bind_vertex_buffers(0, [self.text_vertex_buffer.clone()])
+            .bind_descriptor_sets(
+                vulkano::pipeline::PipelineBindPoint::Graphics,
+                self.text_pipeline.layout().clone(),
+                0,
+                self.text_set.clone()
+            )
+            .draw(self.text_vertices.clone().len() as u32, 1, 0, 0)
+            .unwrap();
 
 
 
-
-
-
+        
 
 
 

@@ -31,8 +31,7 @@ lazy_static = "1.4.0"
 rodio = "0.16.0"
 png = "0.17.7"
 discord-presence = "0.5.14"
-rusttype = "0.9.3"
-glyph_brush = "0.7.5"
+rusttype = { version = "0.9.3", features = ["gpu_cache"]}
 
 [profile.release]
 strip = "symbols"
