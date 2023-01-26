@@ -6,7 +6,6 @@ use std::collections::HashMap;
 use std::io::Cursor;
 use std::sync::Arc;
 use vulkano::buffer::{BufferUsage, CpuBufferPool, CpuAccessibleBuffer};
-use vulkano::command_buffer::CopyBufferToImageInfo;
 use vulkano::command_buffer::{
     allocator::StandardCommandBufferAllocator, AutoCommandBufferBuilder, CommandBufferUsage,
     PrimaryCommandBufferAbstract, RenderPassBeginInfo, SubpassContents,
@@ -18,13 +17,9 @@ use vulkano::descriptor_set::{PersistentDescriptorSet, WriteDescriptorSet};
 use vulkano::device::physical::PhysicalDevice;
 use vulkano::device::DeviceExtensions;
 use vulkano::device::{Device, Queue};
-use vulkano::format::Format;
-use vulkano::image::immutable::ImmutableImageInitialization;
-use vulkano::image::view::ImageViewCreateInfo;
 use vulkano::image::{view::ImageView, ImageAccess, SwapchainImage};
-use vulkano::image::{ImageDimensions, ImmutableImage, MipmapsCount, ImageUsage, ImageCreateFlags, ImageLayout};
+use vulkano::image::{ImageDimensions, ImmutableImage, MipmapsCount};
 use vulkano::instance::{debug::*, Instance};
-use vulkano::memory;
 use vulkano::memory::allocator::{MemoryUsage, StandardMemoryAllocator};
 use vulkano::pipeline::graphics::viewport::Viewport;
 use vulkano::pipeline::{GraphicsPipeline, Pipeline};
@@ -261,7 +256,7 @@ impl App {
         ).map(|x| x).collect();
 
         for glyph in &glyphs {
-            cache.queue_glyph(0, glyph.clone())
+            cache.queue_glyph(0, glyph.clone());
         }
 
         // update texture cache
@@ -271,7 +266,6 @@ impl App {
                 let height = (rect.max.y - rect.min.y) as usize;
                 let mut dst_index = rect.min.y as usize * 1000 + rect.min.x as usize;
                 let mut src_index = 0;
-
                 for _ in 0..height {
                     let dst_slice = &mut cache_pixel_buffer[dst_index..dst_index+width];
                     let src_slice = &src_data[src_index..src_index+width];
@@ -340,9 +334,8 @@ impl App {
 
 
         let mut text_vertices: Vec<TextVertex> = vec![];
-        for text in &mut glyphs.clone().drain(..) {
-            let gly = glyphs.clone();
-            text_vertices = gly.iter().flat_map(|g| {
+        for _ in glyphs.clone().iter() {
+            text_vertices = glyphs.clone().iter().flat_map(|g| {
                 if let Ok(Some((uv_rect, screen_rect))) = cache.rect_for(0, g) {
                     let gl_rect = Rect {
                         min: point(
