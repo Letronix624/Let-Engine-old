@@ -257,7 +257,7 @@ impl App {
         let glyphs: Vec<PositionedGlyph> = font.layout(
             "Mein Kater Rusty",
             Scale::uniform(50.0),
-            point(300.0, 500.0)
+            point(0.0, 50.0)
         ).map(|x| x).collect();
 
         for glyph in &glyphs {
