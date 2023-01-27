@@ -5,11 +5,16 @@ mod data;
 mod game;
 mod server;
 mod vulkan;
+pub mod client;
+pub mod discord;
+pub mod sound;
+pub mod objects;
 
 extern crate image;
 extern crate vulkano;
+use objects::*;
 use data::*;
-use game::{Game, Object};
+use game::{Game};
 use server::Server;
 use std::net::TcpListener;
 use std::sync::{Arc, Mutex};

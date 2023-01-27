@@ -1,12 +1,10 @@
-mod client;
-mod discord;
-mod sound;
+mod player;
 
 use std::collections::HashMap;
 
 #[allow(unused_imports)]
-use super::{delta_time, fps, window, BACKGROUND, BACKGROUND_ID, SQUARE};
-use crate::data::SQUARE_ID;
+use super::{delta_time, fps, window, BACKGROUND, BACKGROUND_ID, SQUARE, client, discord, sound};
+use crate::{Object};
 
 #[allow(unused_imports)]
 use client::{get_ping, Client};
@@ -53,28 +51,6 @@ impl InputState {
     }
 }
 
-#[derive(Clone, Debug)]
-pub struct Object {
-    pub position: [f32; 2],
-    pub size: [f32; 2],
-    pub rotation: f32,
-    pub color: [f32; 4],
-    //pub texture: Option<>
-    pub data: Vec<super::Vertex>,
-    pub indices: Vec<u16>,
-}
-impl Object {
-    pub fn empty() -> Self {
-        Self {
-            position: [0.0, 0.0],
-            size: [0.0, 0.0],
-            rotation: 0.0,
-            color: [0.0, 0.0, 0.0, 0.0],
-            data: vec![],
-            indices: vec![],
-        }
-    }
-}
 #[derive(Clone)]
 #[allow(dead_code)]
 pub struct Game {
@@ -107,31 +83,16 @@ impl Game {
         let index = self.renderorder.iter().position(|x| *x == name).unwrap();
         self.renderorder.remove(index);
     }
-    fn newobject(
-        &mut self,
-        name: String,
-        color: [f32; 4],
-        data: Vec<super::Vertex>,
-        indices: Vec<u16>,
-        position: [f32; 2],
-        size: [f32; 2],
-        rotation: f32,
-    ) {
+    fn newobject(&mut self, name: String, obj: Object) {
         self.objects.insert(
             name.clone(),
-            Object {
-                position,
-                size,
-                rotation,
-                color,
-                data,
-                indices,
-            },
+            obj
         );
         self.renderorder.push(name);
     }
     pub fn start(&mut self) {
         //Runs one time before the first Frame.
+        player::start(self);
         // self.newobject(
         //     "background".to_string(),
         //     [0.1, 0.3, 0.9, 1.0],
@@ -141,15 +102,7 @@ impl Game {
         //     [1.0, 1.0],
         //     0.0,
         // );
-        self.newobject(
-            "player1".to_string(),
-            [0.1, 0.0, 0.0, 1.0],
-            SQUARE.into(),
-            SQUARE_ID.into(),
-            [0.0, 0.0],
-            [0.3, 0.3],
-            0.0,
-        );
+
 
         //let _ = self.client.connect(); //Connects to the server (seflon.ddns.net) if its available
 
@@ -161,7 +114,7 @@ impl Game {
     }
     pub fn main(&mut self) {
         //Runs every single frame once.
-
+        player::main(self);
 
         let mut player = self.getobject("player1".to_string());
         player.position = [
@@ -194,10 +147,13 @@ impl Game {
 
     pub fn late_main(&mut self) {
         //Runs every time after the redraw events are done.
+        player::late_main(self);
+        
     }
 
     pub fn tick(&mut self) {
         //Runs 62.4 times per second.
+        player::tick(self);
 
         // println!("FPS:{} Ping:{}", fps(), get_ping());
         // if self.client.connected {

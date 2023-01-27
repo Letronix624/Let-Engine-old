@@ -1,7 +1,7 @@
 extern crate image;
 extern crate vulkano;
 use crate::data::*;
-use crate::game::Object;
+use crate::Object;
 use std::collections::HashMap;
 use std::io::Cursor;
 use std::sync::Arc;
@@ -420,7 +420,7 @@ impl App {
                 .boxed(),
         );
 
-        let objects = HashMap::new();
+        let objects: HashMap<String, Object> = HashMap::new();
         let render_order = Vec::new();
 
         surface
@@ -611,7 +611,7 @@ impl App {
                     self.object_buffer
                         .from_data(vertexshader::ty::Object {
                             color: obj.color,
-                            position: obj.position,
+                            position: obj.position(),
                             size: obj.size,
                             rotation: obj.rotation,
                         })

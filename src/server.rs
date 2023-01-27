@@ -108,6 +108,7 @@ impl Server {
                                 color: [1.0, 0.0, 1.0, 1.0],
                                 data: super::SQUARE.to_vec(),
                                 indices: super::SQUARE_ID.to_vec(),
+                                parent: None
                             };
                             {
                                 let mut pd = PLAYERDATA.lock().unwrap();

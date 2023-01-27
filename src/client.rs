@@ -123,8 +123,8 @@ impl Client {
     pub fn sendobject(&self, obj: Object) -> Result<()> {
         let mut buf = [0; 1024];
         buf[0] = 1;
-        buf[1..5].copy_from_slice(&obj.position[0].to_be_bytes());
-        buf[5..9].copy_from_slice(&obj.position[1].to_be_bytes());
+        buf[1..5].copy_from_slice(&obj.position()[0].to_be_bytes());
+        buf[5..9].copy_from_slice(&obj.position()[1].to_be_bytes());
         buf[9..13].copy_from_slice(&obj.size[0].to_be_bytes());
         buf[13..17].copy_from_slice(&obj.size[1].to_be_bytes());
 
@@ -173,6 +173,7 @@ impl Client {
                                     color: [1.0, 0.0, 1.0, 1.0],
                                     data: SQUARE.to_vec(),
                                     indices: SQUARE_ID.to_vec(),
+                                    parent: None,
                                 };
                                 let objname = str::from_utf8(&buf[17 + c..32 + c]).unwrap();
                                 GAMEOBJECTS.lock().unwrap().insert(objname.to_string(), obj);
