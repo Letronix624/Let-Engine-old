@@ -8,7 +8,7 @@ pub fn start(game: &mut Game) {
         "player1".to_string(),
         Object{
             position: [0.0, 0.0],
-            size: [0.3, 0.3],
+            size: [0.9, 0.9],
             rotation: 0.0,
             color: [0.1, 0.0, 0.0, 1.0],
             data: Data::square(),
@@ -23,8 +23,8 @@ pub fn main(game: &mut Game) {
 
     let mut player = game.getobject("player1".to_string());
     player.position = [
-        player.position[0] + delta_time() as f32 * game.input.get_xy().0 * 0.1,
-        player.position[1] + delta_time() as f32 * game.input.get_xy().1 * 0.1,
+        player.position[0] + delta_time() as f32 * game.input.get_xy().0 * 0.6,
+        player.position[1] + delta_time() as f32 * game.input.get_xy().1 * 0.6,
     ];
     
     player.rotation +=
@@ -38,12 +38,11 @@ pub fn main(game: &mut Game) {
     player.size = [
         player.size[0] + delta_time() as f32
         * (game.input.e as i32 - game.input.q as i32) as f32
-        * 0.1,
+        * player.size[0],
         player.size[1] + delta_time() as f32
         * (game.input.e as i32 - game.input.q as i32) as f32
-        * 0.1,
+        * player.size[1]
     ];
-
     if game.input.r {
         player.position = [0.0, 0.0];
         player.rotation = 0.0;

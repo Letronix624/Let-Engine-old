@@ -22,7 +22,9 @@ impl Resources {
         let mut sounds = HashMap::new();
 
         println!("\nLoading Rusty...");
-        let texture = load_texture(include_bytes!("../assets/textures/rustyl.png").to_vec());
+        let texture = load_texture(
+            include_bytes!("../assets/textures/rusty.png").to_vec()
+        );
         textures.insert("rusty".into(), texture);
         println!("Loaded Rusty!\nLoading fonts...");
         let font: Font = {

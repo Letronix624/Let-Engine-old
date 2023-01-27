@@ -118,33 +118,9 @@ impl Game {
         //Runs every single frame once.
         player::main(self);
 
-        let mut player = self.getobject("player1".to_string());
-        player.position = [
-            player.position[0] + delta_time() as f32 * self.input.get_xy().0 * player.size[0] * 8.0,
-            player.position[1] + delta_time() as f32 * self.input.get_xy().1 * player.size[1] * 8.0,
-        ];
-        
-        player.rotation +=
-            delta_time() as f32 * (self.input.rmb as i32 - self.input.lmb as i32) as f32 * 5.0;
-        player.size = player.size.map(|x| {
-            x + delta_time() as f32
-                * (self.input.e as i32 - self.input.q as i32) as f32
-                * player.size[0]
-                * 2.0
-        });
-        if self.input.r {
-            player.position = [0.0, 0.0];
-            player.rotation = 0.0;
-        }
-        // if player.data.len() <= 9 && self.input.vsd == -1.0 {
-        //     self.input.vsd = 0.0;
-        // }
-        // player.data = data::make_circle(
-        //     ((player.data.len() / 3) as isize + self.input.vsd as isize) as usize,
-        // );
+  
         self.input.vsd = 0.0;
 
-        self.setobject("player1".to_string(), player);
     }
 
     pub fn late_main(&mut self) {
