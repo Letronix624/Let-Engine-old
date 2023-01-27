@@ -46,6 +46,7 @@ mod instance;
 mod pipeline;
 mod swapchain;
 mod window;
+mod convert;
 
 use shaders::*;
 
@@ -154,7 +155,7 @@ impl App {
         .unwrap();
         println!("loading rusty...");
         let texture = {
-            let png_bytes = include_bytes!("../assets/textures/rusty.png").to_vec();
+            let png_bytes = include_bytes!("../assets/textures/rustyl2.png").to_vec();
             let cursor = Cursor::new(png_bytes);
             let decoder = png::Decoder::new(cursor);
             let mut reader = decoder.read_info().unwrap();
@@ -164,10 +165,19 @@ impl App {
                 height: info.height,
                 array_layers: 1,
             };
+            let color_type = info.color_type.clone();
+            let pixels = info.width * info.height;
 
             let mut image_data = Vec::new();
-            image_data.resize((info.width * info.height * 4) as usize, 0);
+            image_data.resize((pixels * 4) as usize, 0);
             reader.next_frame(&mut image_data).unwrap();
+
+            if color_type == png::ColorType::Rgb {
+                image_data.resize((pixels * 3) as usize, 0);
+                let imbuf = image::ImageBuffer::from_vec(dimensions.width(), dimensions.height(), image_data).unwrap();
+                let imbuf = convert::rgb_to_rgba(&imbuf);
+                image_data = imbuf.to_vec();
+            }
 
             let image = ImmutableImage::from_iter(
                 &memoryallocator,
@@ -251,8 +261,8 @@ impl App {
 
         let glyphs: Vec<PositionedGlyph> = font.layout(
             "Mein Kater Rusty",
-            Scale::uniform(50.0),
-            point(0.0, 50.0)
+            Scale::uniform(20.0),
+            point(0.0, 20.0)
         ).map(|x| x).collect();
 
         for glyph in &glyphs {
@@ -620,8 +630,8 @@ impl App {
             )
             .unwrap();
 
-            let index_sub_buffer = self.index_buffer.from_iter(obj.indices.clone()).unwrap();
-            let vertex_sub_buffer = self.vertex_buffer.from_iter(obj.data.clone()).unwrap();
+            let index_sub_buffer = self.index_buffer.from_iter(obj.data.indices.clone()).unwrap();
+            let vertex_sub_buffer = self.vertex_buffer.from_iter(obj.data.vertices.clone()).unwrap();
             builder
                 .bind_descriptor_sets(
                     vulkano::pipeline::PipelineBindPoint::Graphics,
@@ -632,7 +642,7 @@ impl App {
                 .bind_vertex_buffers(0, vertex_sub_buffer.clone())
                 .bind_index_buffer(index_sub_buffer.clone())
                 .push_constants(self.pipeline.layout().clone(), 0, push_constants)
-                .draw(obj.data.len() as u32, 1, 0, 0)
+                .draw(obj.data.vertices.len() as u32, 1, 0, 0)
                 .unwrap();
         }
         //Draw Fonts

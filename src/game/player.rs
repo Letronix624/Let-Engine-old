@@ -1,4 +1,4 @@
-use crate::{Game, Object, data::*, delta_time};
+use crate::{Game, Object, data::{*, self}, delta_time};
 
 pub fn start(game: &mut Game) {
     //Runs one time before the first Frame.
@@ -11,8 +11,7 @@ pub fn start(game: &mut Game) {
             size: [0.3, 0.3],
             rotation: 0.0,
             color: [0.1, 0.0, 0.0, 1.0],
-            data: SQUARE.into(),
-            indices: SQUARE_ID.into(),
+            data: Data::square(),
             parent: None
         }
     );

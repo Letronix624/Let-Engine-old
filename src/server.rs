@@ -1,4 +1,6 @@
 extern crate lazy_static;
+use crate::data::Data;
+
 use super::Object;
 use local_ip_address::local_ip;
 use std::collections::HashMap;
@@ -106,8 +108,7 @@ impl Server {
                                 ],
                                 rotation: 0.0,
                                 color: [1.0, 0.0, 1.0, 1.0],
-                                data: super::SQUARE.to_vec(),
-                                indices: super::SQUARE_ID.to_vec(),
+                                data: Data::square(),
                                 parent: None
                             };
                             {

@@ -1,3 +1,4 @@
+use crate::data::Data;
 use crate::data::SQUARE_ID;
 
 use super::SQUARE;
@@ -171,8 +172,7 @@ impl Client {
                                     ],
                                     rotation: 0.0,
                                     color: [1.0, 0.0, 1.0, 1.0],
-                                    data: SQUARE.to_vec(),
-                                    indices: SQUARE_ID.to_vec(),
+                                    data: Data::square(),
                                     parent: None,
                                 };
                                 let objname = str::from_utf8(&buf[17 + c..32 + c]).unwrap();

@@ -57,8 +57,8 @@ pub struct Game {
     pub objects: HashMap<String, Object>,
     pub renderorder: Vec<String>, //variable that has the order of object render
     pub input: InputState,
-    client: Client,
-    olddata: Object,
+    // client: Client,
+    // olddata: Object,
 }
 
 impl Game {
@@ -67,8 +67,8 @@ impl Game {
             objects: HashMap::new(),
             renderorder: vec![],
             input: InputState::new(),
-            client: Client::new(),
-            olddata: Object::empty(),
+            // client: Client::new(),
+            // olddata: Object::empty(),
         }
     }
     pub fn getobject(&self, name: String) -> Object {
@@ -152,7 +152,7 @@ impl Game {
     }
 
     pub fn tick(&mut self) {
-        //Runs 62.4 times per second.
+        // Runs 62.4 times per second.
         player::tick(self);
 
         // println!("FPS:{} Ping:{}", fps(), get_ping());
