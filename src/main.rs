@@ -5,6 +5,7 @@ mod data;
 mod game;
 mod server;
 mod vulkan;
+mod resources;
 pub mod client;
 pub mod discord;
 pub mod sound;

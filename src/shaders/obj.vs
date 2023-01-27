@@ -43,9 +43,10 @@ vec4 colors[] = vec4[](
 );
 void main() {
 
+    tex_coords = position - pc.camera;// / pc.resolution) * resolutionscaler;
+    vec2 position = position * object.size;
 
     float hypo = sqrt(pow(position.x, 2) + pow(position.y, 2));
-
     vec2 processedpos = vec2(
         cos(
             atan(position.y, position.x) + object.rotation
@@ -53,7 +54,7 @@ void main() {
         sin(
             atan(position.y, position.x) + object.rotation
         ) * hypo
-    ) * object.size + object.position;
+    ) + object.position;// * object.size;
 
     
     // y bound (position + pc.camera / pc.resolution) * pc.resolution.y
@@ -68,7 +69,7 @@ void main() {
     
     gl_Position = vec4((processedpos - pc.camera / pc.resolution) * resolutionscaler, 0.0, 1.0);
 
-    tex_coords = position - pc.camera;// / pc.resolution) * resolutionscaler;
+    
 
     
 }

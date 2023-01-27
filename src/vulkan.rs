@@ -1,5 +1,6 @@
 extern crate image;
 extern crate vulkano;
+use crate::GAME;
 use crate::data::*;
 use crate::Object;
 use std::collections::HashMap;
@@ -153,9 +154,8 @@ impl App {
             CommandBufferUsage::OneTimeSubmit,
         )
         .unwrap();
-        println!("loading rusty...");
         let texture = {
-            let png_bytes = include_bytes!("../assets/textures/rustyl2.png").to_vec();
+            let png_bytes = include_bytes!("../assets/textures/rustyl.png").to_vec();
             let cursor = Cursor::new(png_bytes);
             let decoder = png::Decoder::new(cursor);
             let mut reader = decoder.read_info().unwrap();
@@ -179,10 +179,12 @@ impl App {
                 image_data = imbuf.to_vec();
             }
 
+            let texture = GAME.lock().unwrap().resources.textures.get("rusty").unwrap().clone();
+
             let image = ImmutableImage::from_iter(
                 &memoryallocator,
-                image_data,
-                dimensions,
+                texture.0,
+                texture.1,
                 MipmapsCount::One,
                 vulkano::format::Format::R8G8B8A8_SRGB,
                 &mut uploads,
@@ -208,7 +210,6 @@ impl App {
 
         let subpass = Subpass::from(render_pass.clone(), 0).unwrap();
         let pipeline: Arc<GraphicsPipeline> = pipeline::create_pipeline(&device, &vs, &fs, subpass.clone());
-
 
 
         let descriptors = [
@@ -240,10 +241,7 @@ impl App {
             .unwrap(),
         ];
 
-        println!("loaded rusty\nLoading fonts..");
-
-        let font_data = include_bytes!("../assets/fonts/Bani-Regular.ttf");
-        let font = Font::try_from_bytes(font_data).unwrap();
+        
 
         let tvs = text_vertexshader::load(device.clone()).unwrap();
         let tfs = text_fragmentshader::load(device.clone()).unwrap();
@@ -258,13 +256,16 @@ impl App {
             subpass,
             dimensions
         );
-
-        let glyphs: Vec<PositionedGlyph> = font.layout(
-            "Mein Kater Rusty",
-            Scale::uniform(20.0),
-            point(0.0, 20.0)
-        ).map(|x| x).collect();
-
+        let glyphs: Vec<PositionedGlyph> ;
+        {
+            let lock = GAME.lock().unwrap();
+            let font = lock.resources.fonts.get("Bani-Regular").unwrap();
+            glyphs = font.layout(
+                "Mein Kater Rusty",
+                Scale::uniform(20.0),
+                point(0.0, 20.0)
+            ).map(|x| x).collect();
+        }
         for glyph in &glyphs {
             cache.queue_glyph(0, glyph.clone());
         }
@@ -402,7 +403,6 @@ impl App {
             text_vertices.clone().into_iter()).unwrap();
 
 
-        println!("Loaded fonts.");
 
 
 

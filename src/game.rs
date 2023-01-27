@@ -3,7 +3,7 @@ mod player;
 use std::collections::HashMap;
 
 #[allow(unused_imports)]
-use super::{delta_time, fps, window, BACKGROUND, BACKGROUND_ID, SQUARE, client, discord, sound};
+use super::{delta_time, fps, window, BACKGROUND, BACKGROUND_ID, SQUARE, client, discord, sound, resources::*};
 use crate::{Object};
 
 #[allow(unused_imports)]
@@ -57,6 +57,7 @@ pub struct Game {
     pub objects: HashMap<String, Object>,
     pub renderorder: Vec<String>, //variable that has the order of object render
     pub input: InputState,
+    pub resources: Resources,
     // client: Client,
     // olddata: Object,
 }
@@ -67,6 +68,7 @@ impl Game {
             objects: HashMap::new(),
             renderorder: vec![],
             input: InputState::new(),
+            resources: Resources::load_all()
             // client: Client::new(),
             // olddata: Object::empty(),
         }
