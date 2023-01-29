@@ -109,7 +109,7 @@ impl Server {
                                 rotation: 0.0,
                                 color: [1.0, 0.0, 1.0, 1.0],
                                 data: Data::square(),
-                                parent: None
+                                parent: None,
                             };
                             {
                                 let mut pd = PLAYERDATA.lock().unwrap();

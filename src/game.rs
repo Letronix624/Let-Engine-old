@@ -3,8 +3,11 @@ mod player;
 use std::collections::HashMap;
 
 #[allow(unused_imports)]
-use super::{delta_time, fps, window, BACKGROUND, BACKGROUND_ID, SQUARE, client, discord, sound, resources::*};
-use crate::{Object};
+use super::{
+    client, delta_time, discord, fps, resources::*, sound, window, BACKGROUND, BACKGROUND_ID,
+    SQUARE,
+};
+use crate::Object;
 
 #[allow(unused_imports)]
 use client::{get_ping, Client};
@@ -68,9 +71,8 @@ impl Game {
             objects: HashMap::new(),
             renderorder: vec![],
             input: InputState::new(),
-            resources: Resources::load_all()
-            // client: Client::new(),
-            // olddata: Object::empty(),
+            resources: Resources::load_all(), // client: Client::new(),
+                                              // olddata: Object::empty(),
         }
     }
     pub fn getobject(&self, name: String) -> Object {
@@ -86,10 +88,7 @@ impl Game {
         self.renderorder.remove(index);
     }
     fn newobject(&mut self, name: String, obj: Object) {
-        self.objects.insert(
-            name.clone(),
-            obj
-        );
+        self.objects.insert(name.clone(), obj);
         self.renderorder.push(name);
     }
     pub fn start(&mut self) {
@@ -105,7 +104,6 @@ impl Game {
         //     0.0,
         // );
 
-
         //let _ = self.client.connect(); //Connects to the server (seflon.ddns.net) if its available
 
         println!("{:?}", self.renderorder);
@@ -118,15 +116,12 @@ impl Game {
         //Runs every single frame once.
         player::main(self);
 
-  
         self.input.vsd = 0.0;
-
     }
 
     pub fn late_main(&mut self) {
         //Runs every time after the redraw events are done.
         player::late_main(self);
-        
     }
 
     pub fn tick(&mut self) {

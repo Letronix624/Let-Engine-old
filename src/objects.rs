@@ -1,4 +1,4 @@
-use crate::{GAME, data::Data};
+use crate::{data::Data, GAME};
 #[derive(Clone, Debug)]
 pub struct Object {
     pub position: [f32; 2],
@@ -22,19 +22,20 @@ impl Object {
     }
     pub fn position(&self) -> [f32; 2] {
         if let Some(parent) = &self.parent {
-            let pos: Vec<f32> = self.position
+            let pos: Vec<f32> = self
+                .position
                 .iter()
                 .zip(
-                    &GAME.lock()
+                    &GAME
+                        .lock()
                         .unwrap()
                         .getobject(parent.to_string())
-                        .position()
+                        .position(),
                 )
                 .map(|(a, b)| a + b)
                 .collect();
             [pos[0], pos[1]]
-        }
-        else {
+        } else {
             self.position
         }
     }
@@ -59,19 +60,20 @@ impl TextObject {
     }
     pub fn position(&self) -> [f32; 2] {
         if let Some(parent) = &self.parent {
-            let pos: Vec<f32> = self.position
+            let pos: Vec<f32> = self
+                .position
                 .iter()
                 .zip(
-                    &GAME.lock()
+                    &GAME
+                        .lock()
                         .unwrap()
                         .getobject(parent.to_string())
-                        .position()
+                        .position(),
                 )
                 .map(|(a, b)| a + b)
                 .collect();
             [pos[0], pos[1]]
-        }
-        else {
+        } else {
             self.position
         }
     }

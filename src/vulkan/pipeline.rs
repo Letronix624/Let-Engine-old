@@ -35,7 +35,7 @@ pub fn create_font_pipeline(
     vs: &Arc<ShaderModule>,
     fs: &Arc<ShaderModule>,
     subpass: Subpass,
-    dimension: [f32; 2]
+    dimension: [f32; 2],
 ) -> Arc<GraphicsPipeline> {
     GraphicsPipeline::start()
         .vertex_input_state(BuffersDefinition::new().vertex::<TextVertex>())
@@ -43,12 +43,9 @@ pub fn create_font_pipeline(
         .input_assembly_state(InputAssemblyState::new())
         .viewport_state(ViewportState::viewport_fixed_scissor_irrelevant([
             Viewport {
-                origin:      [0.0, 0.0],
+                origin: [0.0, 0.0],
                 depth_range: 0.0..1.0,
-                dimensions:  [
-                    dimension[0] as f32,
-                    dimension[1] as f32
-                ],
+                dimensions: [dimension[0] as f32, dimension[1] as f32],
             },
         ]))
         .fragment_shader(fs.entry_point("main").unwrap(), ())

@@ -1,21 +1,21 @@
 //#![windows_subsystem = "windows"]
 
+pub mod client;
 mod consts;
 mod data;
-mod game;
-mod server;
-mod vulkan;
-mod resources;
-pub mod client;
 pub mod discord;
-pub mod sound;
+mod game;
 pub mod objects;
+mod resources;
+mod server;
+pub mod sound;
+mod vulkan;
 
 extern crate image;
 extern crate vulkano;
-use objects::*;
 use data::*;
-use game::{Game};
+use game::Game;
+use objects::*;
 use server::Server;
 use std::net::TcpListener;
 use std::sync::{Arc, Mutex};
@@ -30,7 +30,7 @@ use winit::{
 };
 
 lazy_static::lazy_static! {
-    static ref GAME: Mutex<Game> = Mutex::new(Game::init());
+    static ref GAME: Mutex<Game> = Mutex::new(Game::init()); // hi
 }
 
 static mut FPS: u16 = 0;
@@ -110,12 +110,10 @@ fn client() {
     // GAME.lock().unwrap()mainloop();
     GAME.lock().unwrap().start();
     thread::spawn(|| loop {
-        thread::spawn(|| 
-            {
-                let mut game = GAME.lock().unwrap();
-                game.tick();
-            }
-        );
+        thread::spawn(|| {
+            let mut game = GAME.lock().unwrap();
+            game.tick();
+        });
         thread::sleep(Duration::from_nanos(16025641));
     });
     let (mut app, event_loop) = vulkan::App::initialize();
@@ -167,7 +165,6 @@ fn client() {
             // Event::DeviceEvent { event, .. } => {
             //     println!("{:#?}", event);
             // },
-
             Event::WindowEvent {
                 event: WindowEvent::KeyboardInput { input, .. },
                 ..
@@ -222,13 +219,13 @@ fn client() {
             Event::WindowEvent { event, .. } => match event {
                 WindowEvent::HoveredFile(_) => {
                     println!("File hovered");
-                },
+                }
                 WindowEvent::HoveredFileCancelled => {
                     println!("File hover cancelled");
-                },
+                }
                 WindowEvent::DroppedFile(path) => {
                     println!("File dropped: {:?}", path);
-                },
+                }
                 _ => (),
             },
             Event::MainEventsCleared => {
@@ -257,7 +254,6 @@ fn client() {
                     app.objects = game.objects.clone();
                     game.main();
                 }
-
             }
             Event::RedrawEventsCleared => {
                 app.redrawevent();

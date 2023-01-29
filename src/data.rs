@@ -24,7 +24,7 @@ impl Data {
     pub fn empty() -> Self {
         Data {
             vertices: vec![],
-            indices: vec![]
+            indices: vec![],
         }
     }
     pub fn square() -> Self {
@@ -159,10 +159,7 @@ macro_rules! make_circle {
         indices.push(indices.last().cloned().unwrap());
         indices.push(indices[1]);
 
-        Data {
-            vertices,
-            indices
-        }
+        Data { vertices, indices }
     }};
     ($corners:expr, $purrcent:expr) => {{
         use core::f64::consts::PI;
@@ -198,10 +195,7 @@ macro_rules! make_circle {
         indices.push(indices.last().cloned().unwrap());
         indices.push(indices[1]);
 
-        Data {
-            vertices,
-            indices
-        }
-    }}
+        Data { vertices, indices }
+    }};
 }
 pub(crate) use make_circle;
