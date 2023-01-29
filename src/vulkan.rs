@@ -4,14 +4,13 @@ use crate::GAME;
 use crate::data::*;
 use crate::Object;
 use std::collections::HashMap;
-use std::io::Cursor;
 use std::sync::Arc;
 use vulkano::buffer::{BufferUsage, CpuBufferPool, CpuAccessibleBuffer};
 use vulkano::command_buffer::{
     allocator::StandardCommandBufferAllocator, AutoCommandBufferBuilder, CommandBufferUsage,
     PrimaryCommandBufferAbstract, RenderPassBeginInfo, SubpassContents,
 };
-use rusttype::{Font, PositionedGlyph, Scale, Rect, point};
+use rusttype::{PositionedGlyph, Scale, Rect, point};
 use rusttype::gpu_cache::Cache;
 use vulkano::descriptor_set::allocator::StandardDescriptorSetAllocator;
 use vulkano::descriptor_set::{PersistentDescriptorSet, WriteDescriptorSet};
@@ -47,7 +46,6 @@ mod instance;
 mod pipeline;
 mod swapchain;
 mod window;
-mod convert;
 
 use shaders::*;
 
@@ -155,31 +153,7 @@ impl App {
         )
         .unwrap();
         let texture = {
-            let png_bytes = include_bytes!("../assets/textures/rustyl.png").to_vec();
-            let cursor = Cursor::new(png_bytes);
-            let decoder = png::Decoder::new(cursor);
-            let mut reader = decoder.read_info().unwrap();
-            let info = reader.info();
-            let dimensions = ImageDimensions::Dim2d {
-                width: info.width,
-                height: info.height,
-                array_layers: 1,
-            };
-            let color_type = info.color_type.clone();
-            let pixels = info.width * info.height;
-
-            let mut image_data = Vec::new();
-            image_data.resize((pixels * 4) as usize, 0);
-            reader.next_frame(&mut image_data).unwrap();
-
-            if color_type == png::ColorType::Rgb {
-                image_data.resize((pixels * 3) as usize, 0);
-                let imbuf = image::ImageBuffer::from_vec(dimensions.width(), dimensions.height(), image_data).unwrap();
-                let imbuf = convert::rgb_to_rgba(&imbuf);
-                image_data = imbuf.to_vec();
-            }
-
-            let texture = GAME.lock().unwrap().resources.textures.get("rusty").unwrap().clone();
+            let texture = GAME.lock().unwrap().resources.textures.get("rusty").unwrap().as_ref().clone();
 
             let image = ImmutableImage::from_iter(
                 &memoryallocator,

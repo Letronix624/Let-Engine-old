@@ -110,10 +110,12 @@ fn client() {
     // GAME.lock().unwrap()mainloop();
     GAME.lock().unwrap().start();
     thread::spawn(|| loop {
-        {
-            let mut game = GAME.lock().unwrap();
-            game.tick();
-        }
+        thread::spawn(|| 
+            {
+                let mut game = GAME.lock().unwrap();
+                game.tick();
+            }
+        );
         thread::sleep(Duration::from_nanos(16025641));
     });
     let (mut app, event_loop) = vulkan::App::initialize();
@@ -162,6 +164,10 @@ fn client() {
                 }
                 _ => (),
             },
+            // Event::DeviceEvent { event, .. } => {
+            //     println!("{:#?}", event);
+            // },
+
             Event::WindowEvent {
                 event: WindowEvent::KeyboardInput { input, .. },
                 ..
@@ -213,6 +219,18 @@ fn client() {
                     (position.y as f32 / WINDOW.height as f32) * 2.0 - 1.0,
                 )
             },
+            Event::WindowEvent { event, .. } => match event {
+                WindowEvent::HoveredFile(_) => {
+                    println!("File hovered");
+                },
+                WindowEvent::HoveredFileCancelled => {
+                    println!("File hover cancelled");
+                },
+                WindowEvent::DroppedFile(path) => {
+                    println!("File dropped: {:?}", path);
+                },
+                _ => (),
+            },
             Event::MainEventsCleared => {
                 //game stuff early update
                 {
@@ -250,8 +268,8 @@ fn client() {
     });
 }
 fn unix_timestamp() -> f64 {
-    return SystemTime::now()
+    SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .unwrap()
-        .as_secs_f64();
+        .as_secs_f64()
 }

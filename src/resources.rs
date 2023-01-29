@@ -1,17 +1,20 @@
 use std::{
     collections::HashMap,
-    io::Cursor
-    };
+    io::Cursor,
+    sync::{
+        Arc,
+        
+    },
+};
 use vulkano::image::ImageDimensions;
 use rusttype::Font;
-use rodio::Decoder;
 use image::{ImageBuffer, Rgb, Rgba};
 
 #[derive(Clone)]
 pub struct Resources {
-    pub textures: HashMap<String, (Vec<u8>, ImageDimensions)>,
-    pub fonts: HashMap<String, Font<'static>>,
-    pub sounds: HashMap<String, Vec<u8>>,
+    pub textures: HashMap<String, Arc<(Vec<u8>, ImageDimensions)>>,
+    pub fonts: HashMap<String, Arc<Font<'static>>>,
+    pub sounds: HashMap<String, Arc<Vec<u8>>>,
 }
 
 impl Resources {
@@ -22,19 +25,24 @@ impl Resources {
         let mut sounds = HashMap::new();
 
         println!("\nLoading Rusty...");
-        let texture = load_texture(
+        let texture = Arc::new(
+                load_texture(
             include_bytes!("../assets/textures/rusty.png").to_vec()
+                )
         );
         textures.insert("rusty".into(), texture);
         println!("Loaded Rusty!\nLoading fonts...");
-        let font: Font = {
-            let font_data = include_bytes!("../assets/fonts/Bani-Regular.ttf");
-            Font::try_from_bytes(font_data).unwrap()
-        };
-
+        let font = Arc::new(
+                {
+                    let font_data = include_bytes!("../assets/fonts/Bani-Regular.ttf");
+                    Font::try_from_bytes(font_data).unwrap()
+                }
+        );
         fonts.insert("Bani-Regular".into(), font);
         println!("Loaded fonts!\nLoading sounds...");
-        let sound = include_bytes!("../assets/sounds/boom.mp3").to_vec();
+        let sound = Arc::new(
+                include_bytes!("../assets/sounds/boom.mp3").to_vec()
+        );
 
         sounds.insert("boom".into(), sound);
         println!("Loaded sounds!\n\nLoading complete.");
