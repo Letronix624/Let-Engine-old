@@ -38,6 +38,7 @@ use winit::{
     window::{Fullscreen, Window},
 };
 
+mod font;
 mod instance;
 mod pipeline;
 mod shaders;
@@ -79,6 +80,7 @@ pub struct App {
     text_vertex_buffer: Arc<CpuAccessibleBuffer<[TextVertex]>>,
     text_set: Arc<PersistentDescriptorSet>,
     text_vertices: Vec<TextVertex>,
+    text_cache: Cache<'static>,
 }
 
 impl App {
@@ -211,6 +213,7 @@ impl App {
                             position: [0.0, 0.0],
                             size: [1.0, 1.0],
                             rotation: 0.0,
+                            textureID: 0,
                         })
                         .unwrap(),
                 )],
@@ -218,153 +221,33 @@ impl App {
             .unwrap(),
         ];
 
+        //font
+
         let tvs = text_vertexshader::load(device.clone()).unwrap();
         let tfs = text_fragmentshader::load(device.clone()).unwrap();
 
-        let mut cache = Cache::builder().dimensions(1000, 1000).build();
-        let mut cache_pixel_buffer = vec![0; 1000 * 1000];
+        let mut text_cache = Cache::builder().dimensions(1000, 1000).build();
 
         let text_pipeline =
             pipeline::create_font_pipeline(&device, &tvs, &tfs, subpass, dimensions);
-        let glyphs: Vec<PositionedGlyph>;
-        {
-            let lock = GAME.lock().unwrap();
-            let font = lock.resources.fonts.get("Bani-Regular").unwrap();
-            glyphs = font
-                .layout("Mein Kater Rusty", Scale::uniform(20.0), point(0.0, 20.0))
-                .map(|x| x)
-                .collect();
-        }
-        for glyph in &glyphs {
-            cache.queue_glyph(0, glyph.clone());
-        }
-
-        // update texture cache
-        cache
-            .cache_queued(|rect, src_data| {
-                let width = (rect.max.x - rect.min.x) as usize;
-                let height = (rect.max.y - rect.min.y) as usize;
-                let mut dst_index = rect.min.y as usize * 1000 + rect.min.x as usize;
-                let mut src_index = 0;
-                for _ in 0..height {
-                    let dst_slice = &mut cache_pixel_buffer[dst_index..dst_index + width];
-                    let src_slice = &src_data[src_index..src_index + width];
-                    dst_slice.copy_from_slice(src_slice);
-
-                    dst_index += 1000;
-                    src_index += width;
-                }
-            })
-            .unwrap();
-
-        let cache_texture = ImmutableImage::from_iter(
-            &memoryallocator,
-            cache_pixel_buffer.iter().cloned(),
-            ImageDimensions::Dim2d {
-                width: 1000,
-                height: 1000,
-                array_layers: 1,
-            },
-            MipmapsCount::One,
-            vulkano::format::Format::R8_UNORM,
-            &mut uploads,
-        )
-        .unwrap();
-
-        let sampler = Sampler::new(
-            device.clone(),
-            SamplerCreateInfo {
-                mag_filter: Filter::Nearest,
-                min_filter: Filter::Linear,
-                address_mode: [
-                    SamplerAddressMode::Repeat,
-                    SamplerAddressMode::Repeat,
-                    SamplerAddressMode::Repeat,
-                ],
-                ..Default::default()
-            },
-        )
-        .unwrap();
-
-        let cache_texture_view = ImageView::new_default(cache_texture).unwrap();
-        let text_set = PersistentDescriptorSet::new(
-            &descriptor_set_allocator,
-            text_pipeline.layout().set_layouts().get(0).unwrap().clone(),
-            [WriteDescriptorSet::image_view_sampler(
-                0,
-                cache_texture_view.clone(),
-                sampler.clone(),
-            )],
-        )
-        .unwrap();
-
-        let mut text_vertices: Vec<TextVertex> = vec![];
-        for _ in glyphs.clone().iter() {
-            text_vertices = glyphs
-                .clone()
-                .iter()
-                .flat_map(|g| {
-                    if let Ok(Some((uv_rect, screen_rect))) = cache.rect_for(0, g) {
-                        let gl_rect = Rect {
-                            min: point(
-                                (screen_rect.min.x as f32 / dimensions[0] as f32 - 0.5) * 2.0,
-                                (screen_rect.min.y as f32 / dimensions[1] as f32 - 0.5) * 2.0,
-                            ),
-                            max: point(
-                                (screen_rect.max.x as f32 / dimensions[0] as f32 - 0.5) * 2.0,
-                                (screen_rect.max.y as f32 / dimensions[1] as f32 - 0.5) * 2.0,
-                            ),
-                        };
-                        vec![
-                            TextVertex {
-                                position: [gl_rect.min.x, gl_rect.max.y],
-                                tex_position: [uv_rect.min.x, uv_rect.max.y],
-                            },
-                            TextVertex {
-                                position: [gl_rect.min.x, gl_rect.min.y],
-                                tex_position: [uv_rect.min.x, uv_rect.min.y],
-                            },
-                            TextVertex {
-                                position: [gl_rect.max.x, gl_rect.min.y],
-                                tex_position: [uv_rect.max.x, uv_rect.min.y],
-                            },
-                            TextVertex {
-                                position: [gl_rect.max.x, gl_rect.min.y],
-                                tex_position: [uv_rect.max.x, uv_rect.min.y],
-                            },
-                            TextVertex {
-                                position: [gl_rect.max.x, gl_rect.max.y],
-                                tex_position: [uv_rect.max.x, uv_rect.max.y],
-                            },
-                            TextVertex {
-                                position: [gl_rect.min.x, gl_rect.max.y],
-                                tex_position: [uv_rect.min.x, uv_rect.max.y],
-                            },
-                        ]
-                        .into_iter()
-                    } else {
-                        vec![].into_iter()
-                    }
-                })
-                .collect();
-        }
-
-        let text_vertex_buffer = CpuAccessibleBuffer::from_iter(
-            &memoryallocator,
-            BufferUsage {
-                vertex_buffer: true,
-                ..Default::default()
-            },
-            false,
-            text_vertices.clone().into_iter(),
-        )
-        .unwrap();
 
         let mut viewport = Viewport {
             origin: [0.0, 0.0],
             dimensions: [0.0, 0.0],
             depth_range: 0.0..1.0,
         };
+
+        let (text_vertex_buffer, text_set, text_vertices) = font::load(
+            "test",
+            &mut text_cache,
+            memoryallocator.clone(),
+            device.clone(),
+            &mut uploads,
+            dimensions,
+            &descriptor_set_allocator,
+            text_pipeline.clone(),
+        );
+
         let framebuffers =
             Self::window_size_dependent_setup(&images, render_pass.clone(), &mut viewport);
 
@@ -421,6 +304,7 @@ impl App {
                 text_vertex_buffer,
                 text_set,
                 text_vertices,
+                text_cache,
             },
             event_loop,
         )
@@ -571,6 +455,7 @@ impl App {
                             position: obj.position(),
                             size: obj.size,
                             rotation: obj.rotation,
+                            textureID: if let Some(_) = obj.texture { 1 } else { 0 },
                         })
                         .unwrap(),
                 )],
@@ -600,6 +485,7 @@ impl App {
         }
         //Draw Fonts
         // let text = "Mein Kater Rusty";
+        
 
         builder
             .bind_pipeline_graphics(self.text_pipeline.clone())

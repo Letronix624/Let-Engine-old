@@ -5,7 +5,7 @@ pub struct Object {
     pub size: [f32; 2],
     pub rotation: f32,
     pub color: [f32; 4],
-    //pub texture: Option<>
+    pub texture: Option<String>,
     pub data: Data,
     pub parent: Option<String>,
 }
@@ -16,6 +16,7 @@ impl Object {
             size: [0.0, 0.0],
             rotation: 0.0,
             color: [0.0, 0.0, 0.0, 0.0],
+            texture: None,
             data: Data::empty(),
             parent: None,
         }
@@ -46,6 +47,9 @@ pub struct TextObject {
     pub size: [f32; 2],
     pub rotation: f32,
     pub color: [f32; 4],
+    pub font: String,
+    pub text: String,
+    pub scale: f32,
     pub parent: Option<String>,
 }
 impl TextObject {
@@ -55,6 +59,9 @@ impl TextObject {
             size: [0.0, 0.0],
             rotation: 0.0,
             color: [0.0, 0.0, 0.0, 0.0],
+            font: "Bani-Regular".into(),
+            text: "".into(),
+            scale: 24.0,
             parent: None,
         }
     }

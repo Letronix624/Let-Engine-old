@@ -38,6 +38,9 @@ impl Resources {
             sounds,
         }
     }
+    // pub fn load_texture(&mut self) {
+
+    // }
 }
 
 fn rgb_to_rgba(rgb_image: &ImageBuffer<Rgb<u8>, Vec<u8>>) -> ImageBuffer<Rgba<u8>, Vec<u8>> {

@@ -172,6 +172,7 @@ impl Client {
                                     ],
                                     rotation: 0.0,
                                     color: [1.0, 0.0, 1.0, 1.0],
+                                    texture: None,
                                     data: Data::square(),
                                     parent: None,
                                 };
