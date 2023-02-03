@@ -4,35 +4,26 @@
     "type": "split",
     "children": [
       {
-        "id": "e2917c72a9e98ad1",
+        "id": "324589ce7b13d87c",
         "type": "tabs",
         "children": [
           {
-            "id": "8a3a944d4428bd75",
+            "id": "74bba0e6fa9c5445",
             "type": "leaf",
             "state": {
-              "type": "markdown",
+              "type": "canvas",
               "state": {
-                "file": "README.md",
-                "mode": "source",
-                "source": false
-              }
-            }
-          },
-          {
-            "id": "36888f7f2659dd7b",
-            "type": "leaf",
-            "state": {
-              "type": "markdown",
-              "state": {
-                "file": "notes.md",
-                "mode": "source",
-                "source": false
+                "file": "Untitled.canvas",
+                "viewState": {
+                  "x": 0,
+                  "y": 0,
+                  "zoom": 0,
+                  "snapToGrid": false
+                }
               }
             }
           }
-        ],
-        "currentTab": 1
+        ]
       }
     ],
     "direction": "vertical"
@@ -98,7 +89,7 @@
             "state": {
               "type": "backlink",
               "state": {
-                "file": "notes.md",
+                "file": "Untitled.canvas",
                 "collapseAll": false,
                 "extraContext": false,
                 "sortOrder": "alphabetical",
@@ -115,7 +106,7 @@
             "state": {
               "type": "outgoing-link",
               "state": {
-                "file": "notes.md",
+                "file": "Untitled.canvas",
                 "linksCollapsed": false,
                 "unlinkedCollapsed": true
               }
@@ -138,7 +129,7 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "notes.md"
+                "file": "Untitled.canvas"
               }
             }
           }
@@ -149,9 +140,20 @@
     "width": 300,
     "collapsed": true
   },
-  "active": "36888f7f2659dd7b",
+  "left-ribbon": {
+    "hiddenItems": {
+      "switcher:Open quick switcher": false,
+      "graph:Open graph view": false,
+      "canvas:Create new canvas": false,
+      "daily-notes:Open today's daily note": false,
+      "templates:Insert template": false,
+      "command-palette:Open command palette": false
+    }
+  },
+  "active": "74bba0e6fa9c5445",
   "lastOpenFiles": [
     "README.md",
-    "notes.md"
+    "notes.md",
+    "target/doc/SourceSerif4-LICENSE.md"
   ]
 }
